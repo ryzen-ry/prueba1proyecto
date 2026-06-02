@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{/Users/volun/layoutVol :: html}"
+      th:with="titulo='Alertas de Ayuda - Voluntario'">
+<head></head>
+<body>
+    <div th:fragment="content">
+        <style>
+            :root {
+                --ml-title: #1e3a5f;
+                --ml-muted: #4a5568;
+                --ml-green: #4a9d5f;
+                --ml-green-dark: #3d8450;
+                --ml-border: #e5e7eb;
+                --ml-shadow-lg: 0 14px 35px rgba(17, 24, 39, 0.10);
+                --ml-shadow-md: 0 10px 25px rgba(17, 24, 39, 0.10);
+            }
+
+            @keyframes mlPulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.6; }
+            }
+
+            .ml-page {
+                width: 100%;
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: 24px 16px 6px;
+            }
+
+            .ml-hero {
+                text-align: center;
+                margin-bottom: 28px;
+            }
+
+            .ml-hero h1 {
+                margin: 0 0 8px;
+                font-size: clamp(1.6rem, 3vw, 2.5rem);
+                font-weight: 800;
+                letter-spacing: -0.02em;
+                color: var(--ml-title);
+            }
+
+            .ml-hero p {
+                margin: 0;
+                color: var(--ml-muted);
+                font-size: 1.05rem;
+            }
+
+            .ml-alert {
+                display: block;
+                background: #fffbeb;
+                border: 2px solid #fde68a;
+                color: #92400e;
+                border-radius: 14px;
+                padding: 16px 18px;
+                margin: 0 0 18px;
+            }
+
+            .ml-alert h3 {
+                margin: 0 0 6px;
+                font-size: 1.05rem;
+                font-weight: 800;
+                color: #92400e;
+            }
+
+            .ml-card {
+                background: white;
+                border: 1px solid var(--ml-border);
+                border-top: 4px solid var(--ml-green);
+                border-radius: 18px;
+                box-shadow: var(--ml-shadow-lg);
+                margin-bottom: 18px;
+            }
+
+            .ml-card-body {
+                padding: 22px 20px;
+            }
+
+            .ml-section-title {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                flex-wrap: wrap;
+                margin-bottom: 16px;
+            }
+
+            .ml-bell {
+                width: 52px;
+                height: 52px;
+                border-radius: 999px;
+                background: rgba(74, 157, 95, 0.12);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--ml-green);
+                flex-shrink: 0;
+            }
+
+            .ml-bell svg { width: 26px; height: 26px; }
+
+            .ml-section-title h2 {
+                margin: 0;
+                font-size: clamp(1.25rem, 2.3vw, 1.8rem);
+                font-weight: 800;
+                color: var(--ml-title);
+            }
+
+            .ml-count {
+                display: none;
+                background: #ef4444;
+                color: white;
+                padding: 6px 10px;
+                border-radius: 999px;
+                font-weight: 800;
+                font-size: 0.9rem;
+                line-height: 1;
+            }
+
+            .ml-empty {
+                display: none;
+                text-align: center;
+                padding: 44px 16px;
+                color: var(--ml-muted);
+            }
+
+            .ml-empty .ml-empty-icon {
+                width: 80px;
+                height: 80px;
+                border-radius: 999px;
+                background: #f3f4f6;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 14px;
+                color: #9ca3af;
+            }
+
+            .ml-empty .ml-empty-icon svg { width: 42px; height: 42px; }
+
+            .ml-empty .ml-empty-title {
+                margin: 0;
+                font-size: 1.05rem;
+                font-weight: 800;
+                color: var(--ml-title);
+            }
+
+            .ml-empty .ml-empty-sub {
+                margin: 6px 0 0;
+                font-size: 0.92rem;
+                color: var(--ml-muted);
+            }
+
+            .ml-notif {
+                border: 2px solid var(--ml-green);
+                border-radius: 16px;
+                padding: 18px;
+                background: #f0fdf4;
+                box-shadow: 0 10px 25px rgba(17, 24, 39, 0.06);
+                transition: transform .18s ease, box-shadow .18s ease;
+                margin-bottom: 12px;
+            }
+
+            .ml-notif:hover {
+                transform: translateX(5px);
+                box-shadow: 0 14px 35px rgba(17, 24, 39, 0.10);
+            }
+
+            .ml-notif-grid {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                gap: 16px;
+                align-items: center;
+            }
+
+            .ml-badges {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin-bottom: 10px;
+            }
+
+            .ml-badge-urgent {
+                background: #ef4444;
+                color: white;
+                padding: 6px 10px;
+                border-radius: 999px;
+                font-weight: 800;
+                font-size: 0.8rem;
+                animation: mlPulse 1.5s infinite;
+            }
+
+            .ml-badge-meta {
+                color: var(--ml-muted);
+                font-size: 0.86rem;
+            }
+
+            .ml-notif h3 {
+                margin: 0 0 10px;
+                font-size: 1.1rem;
+                font-weight: 800;
+                color: var(--ml-title);
+            }
+
+            .ml-lines {
+                display: grid;
+                gap: 8px;
+                color: var(--ml-muted);
+                font-size: 0.95rem;
+            }
+
+            .ml-line {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .ml-line svg {
+                width: 18px;
+                height: 18px;
+                color: var(--ml-green);
+                flex-shrink: 0;
+            }
+
+            .ml-actions {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                min-width: 210px;
+            }
+
+            .ml-btn {
+                border: none;
+                border-radius: 999px;
+                padding: 12px 16px;
+                font-weight: 800;
+                font-size: 1rem;
+                cursor: pointer;
+                transition: transform .18s ease, background-color .18s ease, opacity .18s ease, box-shadow .18s ease;
+                white-space: nowrap;
+            }
+
+            .ml-btn:hover:not(:disabled) { transform: scale(1.01); }
+
+            .ml-btn-accept {
+                background: var(--ml-green);
+                color: white;
+                box-shadow: var(--ml-shadow-md);
+            }
+
+            .ml-btn-accept:hover:not(:disabled) { background: var(--ml-green-dark); }
+
+            .ml-btn-reject {
+                background: #ef4444;
+                color: white;
+            }
+
+            .ml-btn:disabled {
+                background: #cbd5e1 !important;
+                color: #64748b !important;
+                cursor: not-allowed;
+                box-shadow: none !important;
+                transform: none !important;
+            }
+
+            .ml-btn.is-loading {
+                opacity: .75;
+                pointer-events: none;
+            }
+
+            .ml-stats {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 16px;
+            }
+
+            .ml-stat-card {
+                background: white;
+                border: 1px solid var(--ml-border);
+                border-radius: 16px;
+                box-shadow: 0 6px 16px rgba(17, 24, 39, 0.06);
+                padding: 16px;
+                transition: transform .18s ease;
+            }
+
+            .ml-stat-card:hover { transform: translateY(-4px); }
+
+            .ml-stat-main {
+                text-align: center;
+            }
+
+            .ml-stat-icon {
+                width: 56px;
+                height: 56px;
+                border-radius: 999px;
+                background: var(--ml-green);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 12px;
+            }
+
+            .ml-stat-icon svg { width: 24px; height: 24px; }
+
+            .ml-stat-value {
+                margin: 0;
+                font-size: 2.2rem;
+                font-weight: 900;
+                color: var(--ml-title);
+                line-height: 1;
+            }
+
+            .ml-stat-label {
+                margin: 6px 0 0;
+                color: var(--ml-muted);
+                font-size: 0.95rem;
+            }
+
+            .ml-kv h3 {
+                margin: 0 0 8px;
+                font-size: 0.95rem;
+                font-weight: 900;
+                color: var(--ml-title);
+            }
+
+            .ml-kv p {
+                margin: 0;
+                color: var(--ml-muted);
+                font-weight: 600;
+            }
+
+            @media (max-width: 900px) {
+                .ml-notif-grid { grid-template-columns: 1fr; }
+                .ml-actions { min-width: 100%; }
+                .ml-stats { grid-template-columns: 1fr; }
+            }
+        </style>
+
+        <div class="ml-page">
+            <div class="ml-hero">
+                <h1>
+                    Bienvenido,
+                    <span th:text="${session.usuario != null ? session.usuario.nombres : 'Voluntario'}">Voluntario</span>
+                </h1>
+                <p>
+                    <span th:if="${session.usuario != null and session.usuario.verificado}">✅ Estás listo para ayudar</span>
+                    <span th:unless="${session.usuario != null and session.usuario.verificado}">⏳ Tu cuenta está en proceso de verificación</span>
+                </p>
+            </div>
+
+            <div id="alertaVerificacion" class="ml-alert" th:if="${session.usuario == null or not session.usuario.verificado}">
+                <h3>Cuenta en Verificación</h3>
+                <p style="margin:0;">
+                    Tu cuenta de voluntario está siendo verificada. Recibirás un correo cuando esté activa.
+                    Mientras tanto, puedes explorar la plataforma.
+                </p>
+            </div>
+
+            <div class="ml-card">
+                <div class="ml-card-body">
+                    <div class="ml-section-title">
+                        <div class="ml-bell" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                            </svg>
+                        </div>
+                        <h2>Solicitudes de Ayuda Activas</h2>
+                        <span id="contadorNotificaciones" class="ml-count">0</span>
+                        <span id="wsEstadoVol" style="margin-left:auto; color: var(--ml-muted); font-weight: 700;"></span>
+                    </div>
+
+                    <div id="listaAlertas"></div>
+
+                    <div id="sinAlertas" class="ml-empty">
+                        <div class="ml-empty-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 6 9 17l-5-5"/>
+                            </svg>
+                        </div>
+                        <p class="ml-empty-title">No hay solicitudes de ayuda en este momento</p>
+                        <p class="ml-empty-sub">Te notificaremos cuando alguien necesite asistencia</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ml-stats">
+                <div class="ml-stat-card ml-stat-main">
+                    <div class="ml-stat-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </div>
+                    <p class="ml-stat-value" id="totalAyudados">0</p>
+                    <p class="ml-stat-label">Personas Ayudadas</p>
+                </div>
+
+                <div class="ml-stat-card ml-kv">
+                    <h3>Tu Código</h3>
+                    <p th:text="${session.usuario != null ? session.usuario.codigo : '—'}">—</p>
+                </div>
+
+                <div class="ml-stat-card ml-kv">
+                    <h3>Carrera</h3>
+                    <p class="text-capitalize" th:text="${session.usuario != null ? session.usuario.carrera : '—'}">—</p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        (() => {
+            const lista = document.getElementById('listaAlertas');
+            const sin = document.getElementById('sinAlertas');
+            const wsEstadoVol = document.getElementById('wsEstadoVol');
+            const contadorNotificaciones = document.getElementById('contadorNotificaciones');
+            const totalAyudados = document.getElementById('totalAyudados');
+
+            const voluntarioVerificado = !!(document.querySelector('#alertaVerificacion') === null);
+
+            let socket = null;
+            let wsOpen = false;
+            let geoWatchId = null;
+            let locationEnabled = false;
+            let lastSentAt = 0;
+            let lastPosition = null;
+
+            // solicitudId -> data
+            const solicitudesActivas = new Map();
+
+            const setSinAlertas = () => {
+                const showEmpty = solicitudesActivas.size === 0;
+                if (sin) sin.style.display = showEmpty ? 'block' : 'none';
+                if (contadorNotificaciones) {
+                    if (solicitudesActivas.size > 0) {
+                        contadorNotificaciones.style.display = 'inline-flex';
+                        contadorNotificaciones.textContent = String(solicitudesActivas.size);
+                    } else {
+                        contadorNotificaciones.style.display = 'none';
+                    }
+                }
+            };
+            const setWsBadge = (text, kind = '') => {
+                if (!wsEstadoVol) return;
+                // No usamos "badge" visual grande aquí; solo texto discreto.
+                wsEstadoVol.textContent = text;
+            };
+
+            const escapeHtml = (s) => {
+                return String(s ?? '')
+                    .replaceAll('&', '&amp;')
+                    .replaceAll('<', '&lt;')
+                    .replaceAll('>', '&gt;')
+                    .replaceAll('"', '&quot;')
+                    .replaceAll("'", '&#039;');
+            };
+
+            const renderSolicitud = (data) => {
+                const solicitudId = data.solicitudId;
+                if (!solicitudId) return;
+
+                const existing = document.getElementById('solicitud-' + solicitudId);
+                const container = existing || document.createElement('div');
+                container.id = 'solicitud-' + solicitudId;
+                container.className = 'ml-notif';
+
+                const d = data.discapacitado || {};
+                const ub = data.ubicacionDiscapacitado || {};
+                const nombre = `${d.nombres ?? ''} ${d.apellidos ?? ''}`.trim();
+
+                container.innerHTML = `
+                    <div class="ml-notif-grid">
+                        <div>
+                            <div class="ml-badges">
+                                <span class="ml-badge-urgent">URGENTE</span>
+                                <span class="ml-badge-meta">Solicitud #${escapeHtml(solicitudId)}</span>
+                            </div>
+                            <h3>${escapeHtml(nombre || 'Usuario')} necesita ayuda</h3>
+                            <div class="ml-lines">
+                                <div class="ml-line">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                         stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                    <span>Teléfono: <strong>${escapeHtml(d.telefono || '—')}</strong></span>
+                                </div>
+                                <div class="ml-line">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                         stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 0 1 16 0Z"/>
+                                        <circle cx="12" cy="10" r="3"/>
+                                    </svg>
+                                    <span>${escapeHtml(d.direccion || 'Av. Principal 123')}</span>
+                                </div>
+                                <div class="ml-line" style="opacity:.9;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                         stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M12 6v6l4 2"/>
+                                    </svg>
+                                    <span>Ubicación: lat=${escapeHtml(ub.lat)} lng=${escapeHtml(ub.lng)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ml-actions">
+                            <button class="ml-btn ml-btn-accept" data-action="ACEPTAR" ${voluntarioVerificado ? '' : 'disabled'}>
+                                ${voluntarioVerificado ? 'Aceptar Ayuda' : 'No Verificado'}
+                            </button>
+                            <button class="ml-btn ml-btn-reject" data-action="RECHAZAR">Rechazar</button>
+                        </div>
+                    </div>
+                `;
+
+                // Limpiar listeners (lo hacemos re-clonando con reemplazo si ya existe)
+                if (existing) existing.remove();
+
+                const wrapper = container.cloneNode(true);
+                const rejectBtn = wrapper.querySelector('[data-action="RECHAZAR"]');
+                const acceptBtn = wrapper.querySelector('[data-action="ACEPTAR"]');
+
+                rejectBtn?.addEventListener('click', () => {
+                    sendDecision(solicitudId, 'RECHAZAR', rejectBtn, acceptBtn);
+                });
+                acceptBtn?.addEventListener('click', () => {
+                    sendDecision(solicitudId, 'ACEPTAR', rejectBtn, acceptBtn);
+                });
+
+                lista.appendChild(wrapper);
+            };
+
+            const removeSolicitud = (solicitudId) => {
+                const el = document.getElementById('solicitud-' + solicitudId);
+                if (el) el.remove();
+            };
+
+            const sendDecision = (solicitudId, decision, rejectBtn, acceptBtn) => {
+                if (!socket || socket.readyState !== WebSocket.OPEN) return;
+                if (decision === 'ACEPTAR' && !locationEnabled) {
+                    alert('Habilita tu ubicación antes de aceptar la solicitud.');
+                    return;
+                }
+                if (decision === 'ACEPTAR' && !voluntarioVerificado) {
+                    alert('Tu cuenta aún no está verificada. No puedes aceptar ayudas hasta que sea verificada.');
+                    return;
+                }
+
+                // Si vamos a aceptar, aseguramos que el backend tenga ubicación reciente.
+                if (decision === 'ACEPTAR') {
+                    flushLastPosition();
+                }
+
+                socket.send(JSON.stringify({
+                    type: 'RESPUESTA_AYUDA',
+                    solicitudId,
+                    decision
+                }));
+                if (rejectBtn) rejectBtn.classList.add('is-loading');
+                if (acceptBtn) acceptBtn.classList.add('is-loading');
+                if (rejectBtn) rejectBtn.textContent = 'Procesando...';
+                if (acceptBtn) acceptBtn.textContent = 'Procesando...';
+
+                // Quitamos de la vista inmediatamente; el servidor decidirá a quién notificar.
+                solicitudesActivas.delete(solicitudId);
+                removeSolicitud(solicitudId);
+                setSinAlertas();
+            };
+
+            const startGeolocation = () => {
+                if (!navigator.geolocation) {
+                    return;
+                }
+
+                geoWatchId = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        locationEnabled = true;
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        const precision = pos.coords.accuracy;
+                        const now = Date.now();
+
+                        lastPosition = { lat, lng, precisionMetros: precision, timestamp: now };
+
+                        if (socket && wsOpen && now - lastSentAt >= 5000) {
+                            lastSentAt = now;
+                            socket.send(JSON.stringify({
+                                type: 'LOCATION_UPDATE',
+                                lat,
+                                lng,
+                                precisionMetros: precision,
+                                timestamp: now
+                            }));
+                        }
+                    },
+                    () => {
+                        locationEnabled = false;
+                    },
+                    { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+                );
+            };
+
+            const flushLastPosition = () => {
+                if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+                if (!lastPosition) return false;
+                const now = Date.now();
+                if (now - lastSentAt < 800) return true;
+                lastSentAt = now;
+                socket.send(JSON.stringify({ type: 'LOCATION_UPDATE', ...lastPosition, timestamp: now }));
+                return true;
+            };
+
+            const connectWs = () => {
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+                const wsUrl = wsProtocol + window.location.host + '/ws/ayuda';
+
+                socket = new WebSocket(wsUrl);
+
+                socket.onopen = () => {
+                    wsOpen = true;
+                    setSinAlertas();
+                    setWsBadge('Conectado');
+                    flushLastPosition();
+                };
+
+                socket.onmessage = (event) => {
+                    let data = null;
+                    try { data = JSON.parse(event.data); } catch (e) { return; }
+                    if (!data || !data.type) return;
+
+                    switch (data.type) {
+                        case 'NUEVA_SOLICITUD': {
+                            const solicitudId = data.solicitudId;
+                            if (!solicitudId) return;
+                            solicitudesActivas.set(solicitudId, data);
+                            if (lista) lista.innerHTML = '';
+                            renderSolicitud(data);
+                            setSinAlertas();
+                            break;
+                        }
+                        case 'SOLICITUD_RECHAZADA': {
+                            const solicitudId = data.solicitudId;
+                            if (solicitudesActivas.has(solicitudId)) {
+                                solicitudesActivas.delete(solicitudId);
+                                removeSolicitud(solicitudId);
+                                setSinAlertas();
+                            }
+                            break;
+                        }
+                        case 'CONFIRMACION_ACEPTACION': {
+                            // Si aceptaron, ya se completó para este voluntario.
+                            solicitudesActivas.clear();
+                            if (lista) lista.innerHTML = '';
+                            setSinAlertas();
+                            if (totalAyudados) {
+                                const current = Number(totalAyudados.textContent || '0') || 0;
+                                totalAyudados.textContent = String(current + 1);
+                            }
+                            alert('✅ Has aceptado la solicitud. Coordinación lista.');
+                            break;
+                        }
+                    }
+                };
+
+                socket.onerror = () => {};
+                socket.onclose = () => {
+                    wsOpen = false;
+                    setWsBadge('Desconectado');
+                };
+            };
+
+            document.addEventListener('DOMContentLoaded', () => {
+                if (lista) lista.innerHTML = '';
+                if (!geoWatchId) startGeolocation();
+                setSinAlertas();
+                setWsBadge('Conectando...');
+                connectWs();
+            });
+        })();
+        </script>
+    </div>
+</body>
+</html>
