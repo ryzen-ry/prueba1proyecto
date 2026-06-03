@@ -1,6 +1,7 @@
 package com.redsolidaria.enjambre.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -12,9 +13,13 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
+    @Value("${spring.mail.username}")
+    private String emailFrom;
+
     @Async
     public void enviarCodigoVerificacion(String emailDestino, String codigo) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
+        mensaje.setFrom(emailFrom);
         mensaje.setTo(emailDestino);
         mensaje.setSubject("🔐 Código de verificación - Red Solidaria UTP");
         mensaje.setText("Hola,\n\nTu código de verificación es: " + codigo +
@@ -29,6 +34,7 @@ public class EmailService {
     @Async
     public void enviarCorreoActivacion(String emailDestino) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
+        mensaje.setFrom(emailFrom);
         mensaje.setTo(emailDestino);
         mensaje.setSubject("🎉 Tu cuenta ha sido activada - Red Solidaria UTP");
         mensaje.setText("Hola,\n\nTu cuenta ha sido activada con éxito. Ya puedes iniciar sesión en la plataforma.\n\n" +
@@ -41,6 +47,7 @@ public class EmailService {
     @Async
     public void enviarCorreoRechazo(String emailDestino) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
+        mensaje.setFrom(emailFrom);
         mensaje.setTo(emailDestino);
         mensaje.setSubject("❌ Tu cuenta no fue activada - Red Solidaria UTP");
         mensaje.setText("Hola,\n\nTu cuenta no fue activada porque no cumple los requisitos. Puedes volver a registrarte corrigiendo la información.\n\n" +
@@ -53,6 +60,7 @@ public class EmailService {
     @Async
     public void enviarConfirmacionMonetaria(String emailDestino, String nombre, Double monto) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
+        mensaje.setFrom(emailFrom);
         mensaje.setTo(emailDestino);
         mensaje.setSubject("💖 ¡Tu donación monetaria ha sido confirmada! - Red Solidaria UTP");
         mensaje.setText("Hola " + nombre + ",\n\n" +
@@ -67,6 +75,7 @@ public class EmailService {
     @Async
     public void enviarRechazoMonetaria(String emailDestino, String nombre) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
+        mensaje.setFrom(emailFrom);
         mensaje.setTo(emailDestino);
         mensaje.setSubject("⚠️ Actualización sobre tu donación monetaria - Red Solidaria UTP");
         mensaje.setText("Hola " + nombre + ",\n\n" +
@@ -81,6 +90,7 @@ public class EmailService {
     @Async
     public void enviarConfirmacionProductoRecoger(String emailDestino, String nombre, String producto, String horario) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
+        mensaje.setFrom(emailFrom);
         mensaje.setTo(emailDestino);
         mensaje.setSubject("📦 ¡Tu donación de producto ha sido aprobada! (Recojo en domicilio) - Red Solidaria UTP");
         mensaje.setText("Hola " + nombre + ",\n\n" +
@@ -98,6 +108,7 @@ public class EmailService {
     @Async
     public void enviarConfirmacionProductoLlevar(String emailDestino, String nombre, String producto, String direccionSede, String horarioAtencion) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
+        mensaje.setFrom(emailFrom);
         mensaje.setTo(emailDestino);
         mensaje.setSubject("📦 ¡Tu donación de producto ha sido aprobada! (Llevar a sede) - Red Solidaria UTP");
         mensaje.setText("Hola " + nombre + ",\n\n" +
@@ -115,6 +126,7 @@ public class EmailService {
     @Async
     public void enviarRechazoProducto(String emailDestino, String nombre) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
+        mensaje.setFrom(emailFrom);
         mensaje.setTo(emailDestino);
         mensaje.setSubject("⚠️ Actualización sobre tu donación de producto - Red Solidaria UTP");
         mensaje.setText("Hola " + nombre + ",\n\n" +

@@ -15,5 +15,9 @@ public interface SolicitudAyudaIntentoRepository extends JpaRepository<Solicitud
     List<SolicitudAyudaIntento> findBySolicitud_Id(Long solicitudId);
 
     Optional<SolicitudAyudaIntento> findBySolicitud_IdAndVoluntario_Id(Long solicitudId, Long voluntarioId);
+
+    void deleteByVoluntario_Id(Long voluntarioId);
+
+    void deleteBySolicitud_Discapacitado_Id(Long discapacitadoId);
 }
 

@@ -14,5 +14,7 @@ public interface UbicacionUsuarioRepository extends JpaRepository<UbicacionUsuar
     Optional<UbicacionUsuario> findByUsuario_Id(Long usuarioId);
 
     List<UbicacionUsuario> findByUsuario_RolAndActualizadoEnAfter(String rol, LocalDateTime after);
+
+    void deleteByUsuario_Id(Long usuarioId);
 }
 
