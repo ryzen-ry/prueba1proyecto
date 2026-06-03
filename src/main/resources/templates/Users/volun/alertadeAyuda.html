@@ -16,6 +16,23 @@
                 --ml-shadow-md: 0 10px 25px rgba(17, 24, 39, 0.10);
             }
 
+            .ml-voluntario {
+                display: none;
+                margin-top: 14px;
+                text-align: left;
+                background: #ecfdf5;
+                border: 1px solid #d1fae5;
+                padding: 14px;
+                border-radius: 14px;
+            }
+
+            .ml-voluntario h3 {
+                margin: 0 0 10px;
+                color: #065f46;
+                font-size: 1rem;
+                font-weight: 800;
+            }
+
             @keyframes mlPulse {
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.6; }
@@ -385,6 +402,11 @@
                         <p class="ml-empty-title">No hay solicitudes de ayuda en este momento</p>
                         <p class="ml-empty-sub">Te notificaremos cuando alguien necesite asistencia</p>
                     </div>
+
+                    <div id="infoDiscapacitado" class="ml-voluntario">
+                        <h3>Beneficiario asignado</h3>
+                        <div id="infoDiscapacitadoDetalle"></div>
+                    </div>
                 </div>
             </div>
 
@@ -415,8 +437,11 @@
             </div>
         </div>
 
-        <script>
+        <script th:inline="javascript">
         (() => {
+            const currentUsuarioId = [[${session.usuario != null ? session.usuario.id : null}]];
+            const currentUsuarioRol = [[${session.usuario != null ? session.usuario.rol : null}]];
+
             const lista = document.getElementById('listaAlertas');
             const sin = document.getElementById('sinAlertas');
             const wsEstadoVol = document.getElementById('wsEstadoVol');
@@ -542,6 +567,24 @@
                 if (el) el.remove();
             };
 
+            const renderDiscapacitado = (discapacitado, ubicacionDis) => {
+                const d = discapacitado || {};
+                const ub = ubicacionDis || {};
+                const nombre = `${d.nombres ?? ''} ${d.apellidos ?? ''}`.trim();
+
+                const infoDiv = document.getElementById('infoDiscapacitado');
+                const detalleDiv = document.getElementById('infoDiscapacitadoDetalle');
+                if (!infoDiv || !detalleDiv) return;
+
+                detalleDiv.innerHTML = `
+                    <div><b>Nombre:</b> ${escapeHtml(nombre)}</div>
+                    <div><b>Teléfono:</b> ${escapeHtml(d.telefono)}</div>
+                    <div><b>Dirección:</b> ${escapeHtml(d.direccion)}</div>
+                    <div style="margin-top:8px;"><b>Ubicación del beneficiario:</b> lat=${escapeHtml(ub.lat)} lng=${escapeHtml(ub.lng)}</div>
+                `;
+                infoDiv.style.display = 'block';
+            };
+
             const sendDecision = (solicitudId, decision, rejectBtn, acceptBtn) => {
                 if (!socket || socket.readyState !== WebSocket.OPEN) return;
                 if (decision === 'ACEPTAR' && !locationEnabled) {
@@ -619,7 +662,7 @@
 
             const connectWs = () => {
                 const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-                const wsUrl = wsProtocol + window.location.host + '/ws/ayuda';
+                const wsUrl = wsProtocol + window.location.host + '/ws/ayuda?usuarioId=' + currentUsuarioId + '&usuarioRol=' + currentUsuarioRol;
 
                 socket = new WebSocket(wsUrl);
 
@@ -663,6 +706,7 @@
                                 const current = Number(totalAyudados.textContent || '0') || 0;
                                 totalAyudados.textContent = String(current + 1);
                             }
+                            renderDiscapacitado(data.discapacitado, data.ubicacionDiscapacitado);
                             alert('✅ Has aceptado la solicitud. Coordinación lista.');
                             break;
                         }
