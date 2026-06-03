@@ -318,7 +318,7 @@ public class ApiAuthController {
             return null;
         }
 
-        String uploadDir = "src/main/resources/static/uploads/documentos/";
+        String uploadDir = "uploads/documentos/";
         File directorio = new File(uploadDir);
         if (!directorio.exists()) {
             directorio.mkdirs();

@@ -304,8 +304,8 @@ public class UsuarioService {
     private void eliminarArchivoFisico(String rutaRelativa) {
         if (rutaRelativa != null && !rutaRelativa.isEmpty()) {
             try {
-                // Convertir ruta relativa (/uploads/documentos/...) a ruta del sistema
-                String rutaCompleta = "src/main/resources/static" + rutaRelativa;
+                // Convertir ruta relativa (/uploads/documentos/...) a ruta del sistema (quitando la barra inicial)
+                String rutaCompleta = rutaRelativa.startsWith("/") ? rutaRelativa.substring(1) : rutaRelativa;
                 java.io.File file = new java.io.File(rutaCompleta);
                 if (file.exists() && file.isFile()) {
                     if (file.delete()) {

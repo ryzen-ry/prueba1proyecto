@@ -3,6 +3,7 @@ package com.redsolidaria.enjambre.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -11,6 +12,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
+    @Async
     public void enviarCodigoVerificacion(String emailDestino, String codigo) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setTo(emailDestino);
@@ -24,6 +26,7 @@ public class EmailService {
         System.out.println("✓ Correo enviado a: " + emailDestino + " | Código: " + codigo);
     }
 
+    @Async
     public void enviarCorreoActivacion(String emailDestino) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setTo(emailDestino);
@@ -35,6 +38,7 @@ public class EmailService {
         System.out.println("✓ Correo de activación enviado a: " + emailDestino);
     }
 
+    @Async
     public void enviarCorreoRechazo(String emailDestino) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setTo(emailDestino);
@@ -46,6 +50,7 @@ public class EmailService {
         System.out.println("✓ Correo de rechazo enviado a: " + emailDestino);
     }
 
+    @Async
     public void enviarConfirmacionMonetaria(String emailDestino, String nombre, Double monto) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setTo(emailDestino);
@@ -59,6 +64,7 @@ public class EmailService {
         System.out.println("✓ Correo de confirmación monetaria enviado a: " + emailDestino + " | Monto: S/. " + monto);
     }
 
+    @Async
     public void enviarRechazoMonetaria(String emailDestino, String nombre) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setTo(emailDestino);
@@ -72,6 +78,7 @@ public class EmailService {
         System.out.println("✓ Correo de rechazo monetaria enviado a: " + emailDestino);
     }
 
+    @Async
     public void enviarConfirmacionProductoRecoger(String emailDestino, String nombre, String producto, String horario) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setTo(emailDestino);
@@ -88,6 +95,7 @@ public class EmailService {
         System.out.println("✓ Correo de recojo de producto enviado a: " + emailDestino + " | Producto: " + producto);
     }
 
+    @Async
     public void enviarConfirmacionProductoLlevar(String emailDestino, String nombre, String producto, String direccionSede, String horarioAtencion) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setTo(emailDestino);
@@ -104,6 +112,7 @@ public class EmailService {
         System.out.println("✓ Correo de entrega de producto en sede enviado a: " + emailDestino + " | Producto: " + producto);
     }
 
+    @Async
     public void enviarRechazoProducto(String emailDestino, String nombre) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setTo(emailDestino);
@@ -117,4 +126,4 @@ public class EmailService {
         mailSender.send(mensaje);
         System.out.println("✓ Correo de rechazo producto enviado a: " + emailDestino);
     }
-}
+}
