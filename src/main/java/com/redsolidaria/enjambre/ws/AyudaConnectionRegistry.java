@@ -58,8 +58,9 @@ public class AyudaConnectionRegistry {
                 }
             }
         } catch (IOException e) {
-            // Si el socket ya no está abierto o hay error de red, solo ignoramos.
-            // Esto evita bloquear el flujo principal.
+            // Bug #4 fix: loggear el error para diagnóstico en lugar de ignorarlo silenciosamente.
+            System.err.println("[WS] Error al enviar mensaje a usuario " + usuarioId
+                    + ": " + e.getMessage());
         }
     }
 
