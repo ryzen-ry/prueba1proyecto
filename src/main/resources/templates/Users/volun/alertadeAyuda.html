@@ -676,27 +676,12 @@
                 };
             };
 
-            const loadEstadisticas = async () => {
-                try {
-                    const res = await fetch('/api/ayuda/estadisticas');
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (totalAyudados) {
-                            totalAyudados.textContent = String(data.totalAyudados ?? 0);
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error loading stats:', e);
-                }
-            };
-
             document.addEventListener('DOMContentLoaded', () => {
                 if (lista) lista.innerHTML = '';
                 if (!geoWatchId) startGeolocation();
                 setSinAlertas();
                 setWsBadge('Conectando...');
                 connectWs();
-                loadEstadisticas();
             });
         })();
         </script>
