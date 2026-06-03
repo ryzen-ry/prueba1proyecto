@@ -34,7 +34,7 @@ public class AdminController {
         model.addAttribute("totalDiscapacitados", usuarioService.listarDiscapacitados().size());
         model.addAttribute("totalAdministradores", usuarioService.listarAdministradores().size());
         model.addAttribute("totalPendientes", usuarioService.listarUsuariosPendientes().size());
-        return "/admin/dashboardAdm";
+        return "admin/dashboardAdm";
     }
     
     // ========== GESTIÓN DE USUARIOS ==========
@@ -42,19 +42,19 @@ public class AdminController {
     @GetMapping("/usuarios")
     public String usuarios(Model model) {
         model.addAttribute("usuarios", usuarioService.listarTodosUsuarios());
-        return "/admin/usuarios";
+        return "admin/usuarios";
     }
     
     @GetMapping("/voluntarios")
     public String voluntarios(Model model) {
         model.addAttribute("voluntarios", usuarioService.listarVoluntarios());
-        return "/admin/voluntarios";
+        return "admin/voluntarios";
     }
     
     @GetMapping("/discapacitados")
     public String discapacitados(Model model) {
         model.addAttribute("discapacitados", usuarioService.listarDiscapacitados());
-        return "/admin/discapacitados";
+        return "admin/discapacitados";
     }
     
     // ========== GESTIÓN DE ADMINISTRADORES ==========
@@ -62,13 +62,13 @@ public class AdminController {
     @GetMapping("/administradores")
     public String administradores(Model model) {
         model.addAttribute("administradores", usuarioService.listarAdministradores());
-        return "/admin/administradores";
+        return "admin/administradores";
     }
     
     @GetMapping("/admin/nuevo")
     public String nuevoAdmin(Model model) {
         model.addAttribute("adminDTO", new AdminDTO());
-        return "/admin/admin-form";
+        return "admin/admin-form";
     }
     
     @PostMapping("/admin/crear")
@@ -78,11 +78,11 @@ public class AdminController {
         
         if (!adminDTO.isPasswordMatching()) {
             result.rejectValue("confirmPassword", "error", "Las contraseñas no coinciden");
-            return "/admin/admin-form";
+            return "admin/admin-form";
         }
         
         if (result.hasErrors()) {
-            return "/admin/admin-form";
+            return "admin/admin-form";
         }
         
         try {
@@ -113,7 +113,7 @@ public class AdminController {
     
     @GetMapping("/foro")
     public String foro() {
-        return "/admin/foro";
+        return "admin/foro";
     }
     
     @GetMapping("/usuario/eliminar/{id}")
@@ -133,7 +133,7 @@ public class AdminController {
     public String activacion(Model model) {
         model.addAttribute("usuariosPendientes", usuarioService.listarUsuariosPendientes());
         model.addAttribute("historialActivaciones", usuarioService.listarHistorialActivaciones());
-        return "/admin/activacion-usuarios";
+        return "admin/activacion-usuarios";
     }
 
     @PostMapping("/usuarios/{id}/activar")

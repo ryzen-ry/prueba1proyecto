@@ -10,30 +10,30 @@ public class VoluntarioController {
 
     @GetMapping("/inicio")
     public String inicio() {
-        return "/Users/volun/alertadeAyuda";
+        return "Users/volun/alertadeAyuda";
     }
     
     @GetMapping("/capacitacion")
     public String capacitacion() {
-        return "/Users/volun/capacitacion";
+        return "Users/volun/capacitacion";
     }
     
     @GetMapping("/donaciones")
     public String donaciones() {
-        return "/Users/volun/donacionesVol";
+        return "Users/volun/donacionesVol";
     }
     
     @GetMapping("/historial")
     public String historial() {
-        return "/Users/volun/historialVolun";
+        return "Users/volun/historialVolun";
     }
     
     @GetMapping("/foro")
     public String foro() {
-        return "/Users/volun/foro";
+        return "Users/volun/foro";
     }
     @GetMapping("/alertas")
     public String alertas() {
-    return "/Users/volun/alertadeAyuda";
+    return "Users/volun/alertadeAyuda";
     }
 }
