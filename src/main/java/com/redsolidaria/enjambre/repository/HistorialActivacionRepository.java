@@ -15,4 +15,8 @@ public interface HistorialActivacionRepository extends JpaRepository<HistorialAc
            "LEFT JOIN FETCH h.administrador " +
            "ORDER BY h.fechaActivacion DESC")
     List<HistorialActivacion> findAllWithUsuarioAndAdministrador();
+
+    void deleteByUsuario_Id(Long usuarioId);
+
+    void deleteByAdministrador_Id(Long adminId);
 }

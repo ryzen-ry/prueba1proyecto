@@ -5,13 +5,10 @@ import com.redsolidaria.enjambre.model.PersonaDiscapacitada;
 import com.redsolidaria.enjambre.model.Usuario;
 import com.redsolidaria.enjambre.model.Voluntario;
 import com.redsolidaria.enjambre.model.HistorialActivacion;
-import com.redsolidaria.enjambre.repository.AdministradorRepository;
-import com.redsolidaria.enjambre.repository.HistorialActivacionRepository;
-import com.redsolidaria.enjambre.repository.PersonaDiscapacitadaRepository;
-import com.redsolidaria.enjambre.repository.UsuarioRepository;
-import com.redsolidaria.enjambre.repository.VoluntarioRepository;
+import com.redsolidaria.enjambre.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,6 +30,30 @@ public class UsuarioService {
 
     @Autowired
     private HistorialActivacionRepository historialActivacionRepository;
+
+    @Autowired
+    private DonacionMonetariaRepository donacionMonetariaRepository;
+
+    @Autowired
+    private DonacionProductoRepository donacionProductoRepository;
+
+    @Autowired
+    private CodigoVerificacionRepository codigoVerificacionRepository;
+
+    @Autowired
+    private ComentarioRepository comentarioRepository;
+
+    @Autowired
+    private PublicacionRepository publicacionRepository;
+
+    @Autowired
+    private UbicacionUsuarioRepository ubicacionUsuarioRepository;
+
+    @Autowired
+    private SolicitudAyudaRepository solicitudAyudaRepository;
+
+    @Autowired
+    private SolicitudAyudaIntentoRepository solicitudAyudaIntentoRepository;
 
     // ========== MÉTODOS PARA ADMIN CONTROLLER ==========
     
@@ -73,6 +94,7 @@ public class UsuarioService {
         administradorRepository.deleteById(id);
     }
     
+    @Transactional
     public void eliminarUsuario(Long id) throws Exception {
         Usuario usuario = usuarioRepository.findById(id)
             .orElseThrow(() -> new Exception("Usuario no encontrado"));
@@ -81,11 +103,46 @@ public class UsuarioService {
             throw new Exception("❌ No se puede eliminar la cuenta principal de administrador");
         }
         
-        // Eliminar archivos físicos del disco si existen
+        // 1. Eliminar archivos físicos del disco si existen
         eliminarArchivosUsuario(usuario);
         
+        // 2. Eliminar ubicaciones del usuario
+        ubicacionUsuarioRepository.deleteByUsuario_Id(id);
+        
+        // 3. Eliminar donaciones monetarias
+        donacionMonetariaRepository.deleteByUsuario_Id(id);
+        
+        // 4. Eliminar donaciones de productos
+        donacionProductoRepository.deleteByUsuario_Id(id);
+        
+        // 5. Eliminar códigos de verificación
+        codigoVerificacionRepository.deleteByUsuario_Id(id);
+        
+        // 6. Eliminar comentarios hechos por este usuario
+        comentarioRepository.deleteByUsuario_Id(id);
+        
+        // 7. Eliminar comentarios en publicaciones de este usuario
+        comentarioRepository.deleteByPublicacion_Usuario_Id(id);
+        
+        // 8. Eliminar publicaciones de este usuario
+        publicacionRepository.deleteByUsuario_Id(id);
+        
+        // 9. Eliminar historial de activaciones (tanto si el usuario fue activado o si fue el administrador que activó)
+        historialActivacionRepository.deleteByUsuario_Id(id);
+        historialActivacionRepository.deleteByAdministrador_Id(id);
+        
+        // 10. Eliminar solicitudes de ayuda e intentos
+        if ("DISCAPACITADO".equals(usuario.getRol())) {
+            solicitudAyudaIntentoRepository.deleteBySolicitud_Discapacitado_Id(id);
+            solicitudAyudaRepository.deleteByDiscapacitado_Id(id);
+        } else if ("VOLUNTARIO".equals(usuario.getRol())) {
+            solicitudAyudaIntentoRepository.deleteByVoluntario_Id(id);
+            solicitudAyudaRepository.desasociarVoluntarioAceptado(id);
+        }
+        
+        // 11. Finalmente, eliminar el usuario de la tabla principal
         usuarioRepository.deleteById(id);
-        System.out.println("✅ Usuario eliminado: " + usuario.getEmail());
+        System.out.println("✅ Usuario eliminado con todas sus referencias: " + usuario.getEmail());
     }
     
     public Usuario buscarPorEmail(String email) {

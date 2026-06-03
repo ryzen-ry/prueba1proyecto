@@ -19,19 +19,26 @@ public class SessionUserHandshakeInterceptor implements HandshakeInterceptor {
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                    WebSocketHandler wsHandler, Map<String, Object> attributes) {
         
-        // 1. Intentar obtener desde los parámetros de consulta de la URL (más confiable en Railway/producción)
         String query = request.getURI().getQuery();
+        System.out.println("[WS Handshake] Request URI: " + request.getURI() + " | Query: " + query);
+        
+        // 1. Intentar obtener desde los parámetros de consulta de la URL (más confiable en Railway/producción)
         if (query != null && !query.isEmpty()) {
             Map<String, String> queryParams = parseQuery(query);
             String userIdStr = queryParams.get("usuarioId");
             String userRolStr = queryParams.get("usuarioRol");
+            System.out.println("[WS Handshake] Extracted params - usuarioId: " + userIdStr + ", usuarioRol: " + userRolStr);
             if (userIdStr != null && !userIdStr.isEmpty() && !"null".equals(userIdStr) &&
                 userRolStr != null && !userRolStr.isEmpty() && !"null".equals(userRolStr)) {
                 try {
-                    attributes.put(AyudaWebSocketHandler.ATTR_USUARIO_ID, Long.parseLong(userIdStr));
+                    long uid = Long.parseLong(userIdStr);
+                    attributes.put(AyudaWebSocketHandler.ATTR_USUARIO_ID, uid);
                     attributes.put(AyudaWebSocketHandler.ATTR_USUARIO_ROL, userRolStr);
+                    System.out.println("[WS Handshake] Success via Query Params! usuarioId: " + uid + ", rol: " + userRolStr);
                     return true;
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException ignored) {
+                    System.err.println("[WS Handshake] Failed to parse usuarioId as long: " + userIdStr);
+                }
             }
         }
 
@@ -39,29 +46,39 @@ public class SessionUserHandshakeInterceptor implements HandshakeInterceptor {
         if (request instanceof ServletServerHttpRequest servletRequest) {
             HttpServletRequest httpServletRequest = servletRequest.getServletRequest();
             HttpSession session = httpServletRequest.getSession(false);
+            System.out.println("[WS Handshake] Fallback - HttpSession: " + (session != null ? "exists" : "null"));
             if (session != null) {
                 Object usuarioId = session.getAttribute("usuarioId");
                 Object usuarioRol = session.getAttribute("usuarioRol");
+                System.out.println("[WS Handshake] Fallback - session.usuarioId: " + usuarioId + ", session.usuarioRol: " + usuarioRol);
                 if (usuarioId instanceof Number idNum && usuarioRol instanceof String rolStr) {
                     attributes.put(AyudaWebSocketHandler.ATTR_USUARIO_ID, idNum.longValue());
                     attributes.put(AyudaWebSocketHandler.ATTR_USUARIO_ROL, rolStr);
+                    System.out.println("[WS Handshake] Success via Session attributes! usuarioId: " + idNum.longValue() + ", rol: " + rolStr);
                     return true;
                 }
 
                 Object usuarioObj = session.getAttribute("usuario");
+                System.out.println("[WS Handshake] Fallback - session.usuario: " + (usuarioObj != null ? "exists" : "null"));
                 if (usuarioObj instanceof Usuario usuario) {
                     attributes.put(AyudaWebSocketHandler.ATTR_USUARIO_ID, usuario.getId());
                     attributes.put(AyudaWebSocketHandler.ATTR_USUARIO_ROL, usuario.getRol());
+                    System.out.println("[WS Handshake] Success via Session Object! usuarioId: " + usuario.getId() + ", rol: " + usuario.getRol());
+                    return true;
                 }
             }
         }
 
+        System.out.println("[WS Handshake] Completed with empty authentication attributes.");
         return true;
     }
 
     private Map<String, String> parseQuery(String query) {
         Map<String, String> map = new HashMap<>();
-        String[] pairs = query.split("&");
+        if (query == null || query.isEmpty()) return map;
+        
+        String cleanQuery = query.replace("&amp;", "&");
+        String[] pairs = cleanQuery.split("&");
         for (String pair : pairs) {
             int idx = pair.indexOf("=");
             if (idx > 0) {
