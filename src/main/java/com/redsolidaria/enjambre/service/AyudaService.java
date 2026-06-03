@@ -14,7 +14,8 @@ import java.util.*;
 @Transactional
 public class AyudaService {
 
-    private static final long MAX_UBICACION_AGE_MS = 120_000; // 2 minutos
+    // Bug #2 fix: Ampliar a 10 minutos para dar margen real de uso
+    private static final long MAX_UBICACION_AGE_MS = 600_000;
 
     private final UbicacionUsuarioRepository ubicacionUsuarioRepository;
     private final PersonaDiscapacitadaRepository personaDiscapacitadaRepository;
@@ -66,15 +67,57 @@ public class AyudaService {
         ubicacion.setPrecisionMetros(precisionMetros);
         ubicacion.setActualizadoEn(LocalDateTime.now());
         ubicacionUsuarioRepository.save(ubicacion);
+
+        // Bug #6 fix: Propagar ubicación en tiempo real si hay una sesión ACEPTADA activa
+        propagarUbicacionEnSesionActiva(usuarioId, usuario.getRol(), lat, lng, precisionMetros);
+    }
+
+    /**
+     * Bug #6 fix: Si hay una solicitud ACEPTADA en curso, reenvía la nueva
+     * ubicación a la otra parte en tiempo real.
+     */
+    private void propagarUbicacionEnSesionActiva(Long usuarioId, String rol,
+                                                  double lat, double lng, Double precisionMetros) {
+        Map<String, Object> payloadUbicacion = new HashMap<>();
+        payloadUbicacion.put("type", "UBICACION_ACTUALIZADA");
+        payloadUbicacion.put("lat", lat);
+        payloadUbicacion.put("lng", lng);
+        if (precisionMetros != null) payloadUbicacion.put("precisionMetros", precisionMetros);
+
+        if ("DISCAPACITADO".equals(rol)) {
+            solicitudAyudaRepository
+                    .findTopByDiscapacitado_IdAndEstadoOrderByAceptadaEnDesc(usuarioId, "ACEPTADA")
+                    .ifPresent(solicitud -> {
+                        if (solicitud.getVoluntarioAceptado() != null) {
+                            connectionRegistry.sendToUser(solicitud.getVoluntarioAceptado().getId(), payloadUbicacion);
+                        }
+                    });
+        } else if ("VOLUNTARIO".equals(rol)) {
+            solicitudAyudaRepository
+                    .findTopByVoluntarioAceptado_IdAndEstadoOrderByAceptadaEnDesc(usuarioId, "ACEPTADA")
+                    .ifPresent(solicitud ->
+                            connectionRegistry.sendToUser(solicitud.getDiscapacitado().getId(), payloadUbicacion));
+        }
     }
 
     public SolicitudAyuda solicitarAyuda(Long discapacitadoId) {
         PersonaDiscapacitada discapacitado = personaDiscapacitadaRepository.findById(discapacitadoId)
                 .orElseThrow(() -> new IllegalArgumentException("Discapacitado no encontrado"));
 
-        UbicacionUsuario ubicacionDis = ubicacionUsuarioRepository.findByUsuario_Id(discapacitadoId)
-                .orElseThrow(() -> new IllegalArgumentException("Ubicación no disponible para el discapacitado"));
+        // Bug #5 fix: Evitar solicitudes duplicadas si ya hay una PENDIENTE activa
+        Optional<SolicitudAyuda> pendienteExistente = solicitudAyudaRepository
+                .findTopByDiscapacitado_IdAndEstadoOrderByCreadaEnDesc(discapacitadoId, "PENDIENTE");
+        if (pendienteExistente.isPresent()) {
+            // Devolver la solicitud existente en lugar de crear una nueva
+            System.out.println("[AyudaService] Ya existe solicitud PENDIENTE " + pendienteExistente.get().getId()
+                    + " para discapacitado " + discapacitadoId + ". Reutilizando.");
+            return pendienteExistente.get();
+        }
 
+        UbicacionUsuario ubicacionDis = ubicacionUsuarioRepository.findByUsuario_Id(discapacitadoId)
+                .orElseThrow(() -> new IllegalArgumentException("Ubicación no disponible. Activa tu GPS e inténtalo nuevamente."));
+
+        // Bug #2 fix: ahora MAX_UBICACION_AGE_MS = 600_000 (10 minutos)
         if (ubicacionDis.getActualizadoEn() == null ||
                 ubicacionDis.getActualizadoEn().isBefore(LocalDateTime.now().minusNanos(MAX_UBICACION_AGE_MS * 1_000_000))) {
             throw new IllegalArgumentException("Tu ubicación no está actualizada. Activa tu GPS e inténtalo nuevamente.");
@@ -112,30 +155,43 @@ public class AyudaService {
         LocalDateTime ahora = LocalDateTime.now();
 
         if ("ACEPTAR".equalsIgnoreCase(decision)) {
+            // Bug #3 fix: verificar que el voluntario tiene ubicación activa ANTES de aceptar
+            UbicacionUsuario ubicacionVol = ubicacionUsuarioRepository.findByUsuario_Id(voluntarioId).orElse(null);
+            if (ubicacionVol == null) {
+                Map<String, Object> errVol = new HashMap<>();
+                errVol.put("type", "ERROR");
+                errVol.put("mensaje", "Debes tener el GPS activo para aceptar solicitudes. Activa tu ubicación y vuelve a intentarlo.");
+                connectionRegistry.sendToUser(voluntarioId, errVol);
+                return;
+            }
+
             intento.setEstado("ACEPTADA");
             intento.setRespondidaEn(ahora);
             solicitudAyudaIntentoRepository.save(intento);
 
-            Voluntario voluntario = intento.getVoluntario();
+            // Bug #1 fix: cargar Voluntario desde repositorio en lugar de hacer cast directo
+            Voluntario voluntario = voluntarioRepository.findById(voluntarioId)
+                    .orElseThrow(() -> new IllegalArgumentException("Voluntario no encontrado"));
+
             solicitud.setVoluntarioAceptado(voluntario);
             solicitud.setEstado("ACEPTADA");
             solicitud.setAceptadaEn(ahora);
             solicitudAyudaRepository.save(solicitud);
 
             // Enviar ubicación e información entre ambos usuarios.
-            UbicacionUsuario ubicacionDis = ubicacionUsuarioRepository.findByUsuario_Id(solicitud.getDiscapacitado().getId()).orElse(null);
-            UbicacionUsuario ubicacionVol = ubicacionUsuarioRepository.findByUsuario_Id(voluntario.getId()).orElse(null);
+            UbicacionUsuario ubicacionDis = ubicacionUsuarioRepository
+                    .findByUsuario_Id(solicitud.getDiscapacitado().getId()).orElse(null);
 
+            // Payload para el discapacitado: datos del voluntario + su ubicación
             Map<String, Object> payloadDis = new HashMap<>();
             payloadDis.put("type", "SOLICITUD_ACEPTADA");
             payloadDis.put("solicitudId", solicitud.getId());
             payloadDis.put("voluntario", mapVoluntario(voluntario));
-            if (ubicacionVol != null) {
-                payloadDis.put("ubicacionVoluntario", mapUbicacion(ubicacionVol));
-            }
+            payloadDis.put("ubicacionVoluntario", mapUbicacion(ubicacionVol)); // Siempre presente (validado arriba)
 
             connectionRegistry.sendToUser(solicitud.getDiscapacitado().getId(), payloadDis);
 
+            // Payload para el voluntario: datos del discapacitado + su ubicación
             Map<String, Object> payloadVol = new HashMap<>();
             payloadVol.put("type", "CONFIRMACION_ACEPTACION");
             payloadVol.put("solicitudId", solicitud.getId());
@@ -199,8 +255,8 @@ public class AyudaService {
 
             if (i.getVoluntario() != null) {
                 Map<String, Object> payloadVol = new HashMap<>();
-                // Reutilizamos un type que el frontend del voluntario ya maneja para remover la tarjeta.
-                payloadVol.put("type", "SOLICITUD_RECHAZADA");
+                // Bug #7 fix: usar tipo específico para cancelación por el usuario
+                payloadVol.put("type", "SOLICITUD_CANCELADA_POR_USUARIO");
                 payloadVol.put("solicitudId", solicitudId);
                 payloadVol.put("mensaje", "La solicitud fue cancelada por el usuario.");
                 connectionRegistry.sendToUser(i.getVoluntario().getId(), payloadVol);
@@ -227,7 +283,6 @@ public class AyudaService {
                 : ubicacionUsuarioRepository.findByUsuario_Id(solicitud.getDiscapacitado().getId()).orElse(null);
 
         if (ubicacionDis == null) {
-            // Si no tenemos ubicación del discapacitado, cancelamos.
             solicitud.setEstado("CANCELADA");
             solicitudAyudaRepository.save(solicitud);
             Map<String, Object> payload = new HashMap<>();
@@ -279,7 +334,26 @@ public class AyudaService {
             return;
         }
 
-        Voluntario voluntarioCandidato = (Voluntario) mejor.getUsuario();
+        // Bug #1 fix: cargar el Voluntario correctamente desde su repositorio
+        // en lugar de hacer cast directo desde el proxy de UbicacionUsuario.usuario
+        Long candidatoId = mejor.getUsuario().getId();
+        Voluntario voluntarioCandidato = voluntarioRepository.findById(candidatoId).orElse(null);
+        if (voluntarioCandidato == null) {
+            System.err.println("[AyudaService] Voluntario con id=" + candidatoId
+                    + " no encontrado en tabla voluntarios. Saltando.");
+            // Marcar como intentado para no volver a seleccionarlo y buscar el siguiente
+            SolicitudAyudaIntento intentoFallido = new SolicitudAyudaIntento();
+            intentoFallido.setSolicitud(solicitud);
+            // No podemos continuar sin el voluntario, cancelar la solicitud.
+            solicitud.setEstado("CANCELADA");
+            solicitudAyudaRepository.save(solicitud);
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("type", "SOLICITUD_CANCELADA");
+            payload.put("solicitudId", solicitudId);
+            payload.put("mensaje", "Error interno buscando voluntario. Intenta nuevamente.");
+            connectionRegistry.sendToUser(solicitud.getDiscapacitado().getId(), payload);
+            return;
+        }
 
         SolicitudAyudaIntento intento = new SolicitudAyudaIntento();
         intento.setSolicitud(solicitud);
@@ -294,8 +368,13 @@ public class AyudaService {
         payloadVol.put("solicitudId", solicitudId);
         payloadVol.put("discapacitado", mapDiscapacitado(solicitud.getDiscapacitado()));
         payloadVol.put("ubicacionDiscapacitado", mapUbicacion(ubicacionDis));
+        payloadVol.put("distanciaKm", Math.round(mejorDistanciaKm * 100.0) / 100.0);
 
         connectionRegistry.sendToUser(voluntarioCandidato.getId(), payloadVol);
+
+        System.out.println("[AyudaService] Solicitud " + solicitudId
+                + " enviada a voluntario " + voluntarioCandidato.getId()
+                + " (dist=" + mejorDistanciaKm + " km)");
     }
 
     private Map<String, Object> mapUbicacion(UbicacionUsuario u) {
@@ -312,6 +391,7 @@ public class AyudaService {
         m.put("nombres", v.getNombres());
         m.put("apellidos", v.getApellidos());
         m.put("email", v.getEmail());
+        if (v.getFotoPerfil() != null) m.put("fotoPerfil", v.getFotoPerfil());
         return m;
     }
 
@@ -338,4 +418,3 @@ public class AyudaService {
         return R * c;
     }
 }
-
