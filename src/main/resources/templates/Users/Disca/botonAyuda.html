@@ -352,8 +352,11 @@
                 </div>
             </div>
         </div>
-        <script>
+        <script th:inline="javascript">
         (() => {
+            const currentUsuarioId = [[${session.usuario != null ? session.usuario.id : null}]];
+            const currentUsuarioRol = [[${session.usuario != null ? session.usuario.rol : null}]];
+
             const btn = document.getElementById('btnAyuda');
             const estado = document.getElementById('estadoAyuda');
             const info = document.getElementById('infoVoluntario');
@@ -466,7 +469,7 @@
 
             const connectWs = () => {
                 const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-                const wsUrl = wsProtocol + window.location.host + '/ws/ayuda';
+                const wsUrl = wsProtocol + window.location.host + '/ws/ayuda?usuarioId=' + currentUsuarioId + '&usuarioRol=' + currentUsuarioRol;
 
                 socket = new WebSocket(wsUrl);
 
