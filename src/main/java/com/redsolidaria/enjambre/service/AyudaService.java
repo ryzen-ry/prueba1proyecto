@@ -325,22 +325,6 @@ public class AyudaService {
         return m;
     }
 
-    public List<SolicitudAyuda> obtenerHistorialDiscapacitado(Long id) {
-        return solicitudAyudaRepository.findByDiscapacitado_IdOrderByCreadaEnDesc(id);
-    }
-
-    public List<SolicitudAyuda> obtenerHistorialVoluntario(Long id) {
-        return solicitudAyudaRepository.findByVoluntarioAceptado_IdOrderByCreadaEnDesc(id);
-    }
-
-    public List<SolicitudAyuda> obtenerTodasLasSolicitudes() {
-        return solicitudAyudaRepository.findAll();
-    }
-
-    public long obtenerTotalAyudadosPorVoluntario(Long voluntarioId) {
-        return solicitudAyudaRepository.countByVoluntarioAceptado_IdAndEstado(voluntarioId, "ACEPTADA");
-    }
-
     private double calcularDistanciaKm(double lat1, double lon1, double lat2, double lon2) {
         // Fórmula Haversine para distancias en la Tierra.
         double R = 6371.0;
@@ -354,5 +338,4 @@ public class AyudaService {
         return R * c;
     }
 }
-
 
