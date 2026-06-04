@@ -37,7 +37,8 @@
                 0%,100%{ transform:scale(1); opacity:1; }
                 50%{ transform:scale(1.6); opacity:0.5; }
             }
-            #mapaDiscapacitado { height: 340px; }
+            #mapaDiscapacitado { height: 340px; min-height: 340px; width: 100%; }
+            .ml-map-wrapper.is-visible { display: block !important; visibility: visible !important; }
 
             /* Toast de estado */
             .ml-toast {
@@ -543,8 +544,27 @@
                 integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN2GKm8=" crossorigin=""></script>
         <script th:inline="javascript">
         (() => {
-            const currentUsuarioId = [[${session.usuario != null ? session.usuario.id : null}]];
-            const currentUsuarioRol = [[${session.usuario != null ? session.usuario.rol : null}]];
+            const currentUsuarioId = /*[[${session.usuario != null ? session.usuario.id : null}]]*/ null;
+            const currentUsuarioRol = /*[[${session.usuario != null ? session.usuario.rol : null}]]*/ null;
+
+            const isValidCoord = (lat, lng) => {
+                const la = Number(lat);
+                const ln = Number(lng);
+                return Number.isFinite(la) && Number.isFinite(ln)
+                    && Math.abs(la) <= 90 && Math.abs(ln) <= 180;
+            };
+
+            const ensureLeaflet = () => typeof L !== 'undefined';
+
+            const scheduleMapInvalidate = (map) => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        if (map) map.invalidateSize({ animate: false });
+                        setTimeout(() => { if (map) map.invalidateSize({ animate: false }); }, 300);
+                        setTimeout(() => { if (map) map.invalidateSize({ animate: false }); }, 800);
+                    });
+                });
+            };
 
             const lista = document.getElementById('listaAlertas');
             const sin = document.getElementById('sinAlertas');
@@ -564,6 +584,8 @@
 
             // solicitudId -> data
             const solicitudesActivas = new Map();
+            let cachedUbicacionDiscapacitado = null;
+            let solicitudAceptadaId = null;
 
             // Map state
             let leafletMap = null;
@@ -629,94 +651,99 @@
                 leafletMap.fitBounds(bounds, { padding: [50, 50], animate });
             };
 
-            const initMapVol = (latDis, lngDis, latMi, lngMi) => {
+            const showMapWrapperVol = () => {
                 const wrapper = document.getElementById('mapaDiscapacitadoWrapper');
-
-                // CRÍTICO: mostrar el wrapper ANTES de inicializar Leaflet,
-                // de lo contrario el contenedor tiene dimensiones 0 y el mapa no se renderiza
                 if (wrapper) {
+                    wrapper.classList.add('is-visible');
                     wrapper.style.display = 'block';
                     wrapper.style.visibility = 'visible';
                 }
+            };
 
-                if (!leafletMap) {
-                    // Forzar altura explícita en el contenedor del mapa
+            const initMapVol = (latDis, lngDis, latMi, lngMi) => {
+                if (!ensureLeaflet()) {
+                    showToast('No se cargó Leaflet. Recarga la página.', 'error', 5000);
+                    return;
+                }
+                if (!isValidCoord(latDis, lngDis)) {
+                    showToast('Ubicación del beneficiario no disponible.', 'warning', 4000);
+                    return;
+                }
+
+                const latD = Number(latDis);
+                const lngD = Number(lngDis);
+                const latM = latMi != null && lngMi != null && isValidCoord(latMi, lngMi) ? Number(latMi) : null;
+                const lngM = latM != null ? Number(lngMi) : null;
+
+                showMapWrapperVol();
+
+                const buildMarkers = () => {
                     const mapContainer = document.getElementById('mapaDiscapacitado');
                     if (mapContainer) mapContainer.style.height = '340px';
 
-                    leafletMap = L.map('mapaDiscapacitado', {
-                        zoomControl: true,
-                        attributionControl: true
-                    });
-                    // Tiles de OpenStreetMap
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                        maxZoom: 19,
-                        subdomains: ['a', 'b', 'c']
-                    }).addTo(leafletMap);
-                    // Vista inicial centrada en el discapacitado
-                    leafletMap.setView([latDis, lngDis], 15);
-                }
-
-                // Icono discapacitado (naranja)
-                const iconDis = L.divIcon({
-                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#f97316;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(249,115,22,0.55);color:white;font-size:18px;">📍</div>`,
-                    className: '',
-                    iconSize: [38, 38],
-                    iconAnchor: [19, 19]
-                });
-
-                // Icono yo voluntario (azul)
-                const iconMiVol = L.divIcon({
-                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);color:white;font-size:18px;">🙋</div>`,
-                    className: '',
-                    iconSize: [38, 38],
-                    iconAnchor: [19, 19]
-                });
-
-                if (disMarker) {
-                    disMarker.setLatLng([latDis, lngDis]);
-                } else {
-                    disMarker = L.marker([latDis, lngDis], { icon: iconDis })
-                        .addTo(leafletMap)
-                        .bindPopup('<b>📍 Beneficiario</b><br>Necesita tu ayuda')
-                        .openPopup();
-                }
-
-                if (latMi != null && lngMi != null) {
-                    if (miMarkerVol) {
-                        miMarkerVol.setLatLng([latMi, lngMi]);
-                    } else {
-                        miMarkerVol = L.marker([latMi, lngMi], { icon: iconMiVol })
-                            .addTo(leafletMap)
-                            .bindPopup('<b>🙋 Tu ubicación</b>');
+                    if (!leafletMap) {
+                        leafletMap = L.map('mapaDiscapacitado', {
+                            zoomControl: true,
+                            attributionControl: true
+                        });
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; OpenStreetMap',
+                            maxZoom: 19
+                        }).addTo(leafletMap);
                     }
-                    fitBothMarkersVol(false);
-                    updateRutaVol();
-                } else {
-                    leafletMap.setView([latDis, lngDis], 15);
-                }
 
-                // Invalidar tamaño en múltiples momentos para garantizar render correcto
-                // Doble requestAnimationFrame asegura que el layout ya esté calculado
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        if (leafletMap) {
-                            leafletMap.invalidateSize({ animate: false });
-                        }
-                        setTimeout(() => {
-                            if (leafletMap) leafletMap.invalidateSize({ animate: false });
-                        }, 300);
-                        setTimeout(() => {
-                            if (leafletMap) leafletMap.invalidateSize({ animate: false });
-                        }, 800);
+                    const iconDis = L.divIcon({
+                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#f97316;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(249,115,22,0.55);color:white;font-size:18px;">📍</div>',
+                        className: '',
+                        iconSize: [38, 38],
+                        iconAnchor: [19, 19]
                     });
-                });
+                    const iconMiVol = L.divIcon({
+                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);color:white;font-size:18px;">🙋</div>',
+                        className: '',
+                        iconSize: [38, 38],
+                        iconAnchor: [19, 19]
+                    });
+
+                    if (disMarker) {
+                        disMarker.setLatLng([latD, lngD]);
+                    } else {
+                        disMarker = L.marker([latD, lngD], { icon: iconDis })
+                            .addTo(leafletMap)
+                            .bindPopup('<b>📍 Beneficiario</b><br>Necesita tu ayuda')
+                            .openPopup();
+                    }
+
+                    if (latM != null && lngM != null) {
+                        if (miMarkerVol) {
+                            miMarkerVol.setLatLng([latM, lngM]);
+                        } else {
+                            miMarkerVol = L.marker([latM, lngM], { icon: iconMiVol })
+                                .addTo(leafletMap)
+                                .bindPopup('<b>🙋 Tu ubicación</b>');
+                        }
+                        fitBothMarkersVol(false);
+                        updateRutaVol();
+                    } else {
+                        leafletMap.setView([latD, lngD], 15);
+                    }
+
+                    scheduleMapInvalidate(leafletMap);
+                };
+
+                requestAnimationFrame(() => requestAnimationFrame(buildMarkers));
             };
 
-            // Llamado cuando llega UBICACION_ACTUALIZADA del discapacitado
             const updateDisMarker = (lat, lng) => {
-                if (!leafletMap || !disMarker) return;
+                if (!isValidCoord(lat, lng)) return;
+                if (!leafletMap || !disMarker) {
+                    if (sesionAceptada) {
+                        const myLat = lastPosition?.lat ?? null;
+                        const myLng = lastPosition?.lng ?? null;
+                        initMapVol(Number(lat), Number(lng), myLat, myLng);
+                    }
+                    return;
+                }
                 disMarker.setLatLng([lat, lng]);
                 updateRutaVol();
                 if (miMarkerVol) {
@@ -726,9 +753,24 @@
                 }
             };
 
-            // Llamado cuando el GPS del voluntario actualiza su propia posición
             const updateMiMarkerVol = (lat, lng) => {
-                if (!leafletMap || !miMarkerVol) return;
+                if (!isValidCoord(lat, lng) || !leafletMap) return;
+                if (!miMarkerVol) {
+                    const iconMiVol = L.divIcon({
+                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;">🙋</div>',
+                        className: '',
+                        iconSize: [38, 38],
+                        iconAnchor: [19, 19]
+                    });
+                    miMarkerVol = L.marker([lat, lng], { icon: iconMiVol })
+                        .addTo(leafletMap)
+                        .bindPopup('<b>🙋 Tu ubicación</b>');
+                    if (disMarker) {
+                        fitBothMarkersVol(false);
+                        updateRutaVol();
+                    }
+                    return;
+                }
                 miMarkerVol.setLatLng([lat, lng]);
                 updateRutaVol();
             };
@@ -874,19 +916,25 @@
                     terminarAyuda();
                 });
 
-                // Inicializar mapa
-                const myLat = lastPosition ? lastPosition.lat : null;
-                const myLng = lastPosition ? lastPosition.lng : null;
-                if (ub.lat != null && ub.lng != null) {
-                    initMapVol(Number(ub.lat), Number(ub.lng), myLat, myLng);
+                const myLat = lastPosition?.lat ?? null;
+                const myLng = lastPosition?.lng ?? null;
+                const ubResolved = (ub.lat != null && ub.lng != null) ? ub : cachedUbicacionDiscapacitado;
+                if (ubResolved?.lat != null && ubResolved?.lng != null) {
+                    initMapVol(Number(ubResolved.lat), Number(ubResolved.lng), myLat, myLng);
+                } else {
+                    showToast('Esperando ubicación del beneficiario en el mapa...', 'warning', 4000);
                 }
             };
 
             const terminarAyuda = () => {
                 sesionAceptada = false;
-                // Ocultar mapa
+                solicitudAceptadaId = null;
+                cachedUbicacionDiscapacitado = null;
                 const wrapper = document.getElementById('mapaDiscapacitadoWrapper');
-                if (wrapper) wrapper.style.display = 'none';
+                if (wrapper) {
+                    wrapper.style.display = 'none';
+                    wrapper.classList.remove('is-visible');
+                }
                 const infoDiv = document.getElementById('infoDiscapacitado');
                 if (infoDiv) infoDiv.style.display = 'none';
                 // Destruir mapa
@@ -920,6 +968,11 @@
                     flushLastPosition();
                 }
 
+                const pending = solicitudesActivas.get(solicitudId);
+                if (decision === 'ACEPTAR' && pending?.ubicacionDiscapacitado) {
+                    cachedUbicacionDiscapacitado = pending.ubicacionDiscapacitado;
+                }
+
                 socket.send(JSON.stringify({
                     type: 'RESPUESTA_AYUDA',
                     solicitudId,
@@ -930,10 +983,22 @@
                 if (rejectBtn) rejectBtn.textContent = 'Procesando...';
                 if (acceptBtn) acceptBtn.textContent = 'Procesando...';
 
-                // Quitamos de la vista inmediatamente; el servidor decidirá a quién notificar.
-                solicitudesActivas.delete(solicitudId);
-                removeSolicitud(solicitudId);
-                setSinAlertas();
+                if (decision === 'RECHAZAR') {
+                    solicitudesActivas.delete(solicitudId);
+                    removeSolicitud(solicitudId);
+                    setSinAlertas();
+                }
+            };
+
+            const resetSolicitudButtons = (solicitudId) => {
+                const el = document.getElementById('solicitud-' + solicitudId);
+                if (!el) return;
+                const acceptBtn = el.querySelector('[data-action="ACEPTAR"]');
+                const rejectBtn = el.querySelector('[data-action="RECHAZAR"]');
+                acceptBtn?.classList.remove('is-loading');
+                rejectBtn?.classList.remove('is-loading');
+                if (acceptBtn) acceptBtn.textContent = voluntarioVerificado ? 'Aceptar Ayuda' : 'No Verificado';
+                if (rejectBtn) rejectBtn.textContent = 'Rechazar';
             };
 
             const startGeolocation = () => {
@@ -965,8 +1030,7 @@
                             }));
                         }
 
-                        // Actualizar nuestro propio marcador en el mapa si ya está abierto
-                        if (sesionAceptada && leafletMap && miMarkerVol) {
+                        if (sesionAceptada && leafletMap) {
                             updateMiMarkerVol(lat, lng);
                         }
                     },
@@ -988,8 +1052,17 @@
             };
 
             const connectWs = () => {
+                if (currentUsuarioId == null || !currentUsuarioRol) {
+                    setWsBadge('Sin sesión');
+                    showToast('Inicia sesión para recibir alertas.', 'error', 5000);
+                    return;
+                }
                 const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-                const wsUrl = wsProtocol + window.location.host + '/ws/ayuda?usuarioId=' + currentUsuarioId + '&usuarioRol=' + currentUsuarioRol;
+                const params = new URLSearchParams({
+                    usuarioId: String(currentUsuarioId),
+                    usuarioRol: String(currentUsuarioRol)
+                });
+                const wsUrl = wsProtocol + window.location.host + '/ws/ayuda?' + params.toString();
 
                 socket = new WebSocket(wsUrl);
 
@@ -1009,6 +1082,9 @@
                         case 'NUEVA_SOLICITUD': {
                             const solicitudId = data.solicitudId;
                             if (!solicitudId) return;
+                            if (data.ubicacionDiscapacitado) {
+                                cachedUbicacionDiscapacitado = data.ubicacionDiscapacitado;
+                            }
                             solicitudesActivas.set(solicitudId, data);
                             if (lista) lista.innerHTML = '';
                             renderSolicitud(data);
@@ -1025,8 +1101,11 @@
                             break;
                         }
                         case 'CONFIRMACION_ACEPTACION': {
-                            // Si aceptaron, ya se completó para este voluntario.
                             sesionAceptada = true;
+                            solicitudAceptadaId = data.solicitudId ?? solicitudAceptadaId;
+                            if (data.ubicacionDiscapacitado) {
+                                cachedUbicacionDiscapacitado = data.ubicacionDiscapacitado;
+                            }
                             solicitudesActivas.clear();
                             if (lista) lista.innerHTML = '';
                             setSinAlertas();
@@ -1034,8 +1113,16 @@
                                 const current = Number(totalAyudados.textContent || '0') || 0;
                                 totalAyudados.textContent = String(current + 1);
                             }
-                            renderDiscapacitado(data.discapacitado, data.ubicacionDiscapacitado);
+                            const ubConfirm = data.ubicacionDiscapacitado || cachedUbicacionDiscapacitado;
+                            renderDiscapacitado(data.discapacitado, ubConfirm);
                             showToast('✅ ¡Solicitud aceptada! El mapa se actualiza en tiempo real.', 'success', 5000);
+                            break;
+                        }
+                        case 'ERROR': {
+                            if (data.solicitudId) {
+                                resetSolicitudButtons(data.solicitudId);
+                            }
+                            showToast(data.mensaje || 'No se pudo completar la acción.', 'error', 5000);
                             break;
                         }
                         case 'UBICACION_ACTUALIZADA': {
