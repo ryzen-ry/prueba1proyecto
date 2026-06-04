@@ -5,6 +5,7 @@
 <head></head>
 <body>
     <div th:fragment="content">
+        <!-- Leaflet CSS ya está en layoutDis.html head, no duplicar -->
         <style>
             /* ── Map container ── */
             .ml-map-wrapper {
@@ -390,6 +391,20 @@
                         <div id="infoVoluntarioDetalle"></div>
                     </div>
 
+                    <!-- Botón explícito para terminar la ayuda (visible solo cuando hay sesión activa) -->
+                    <div id="seccionTerminarAyuda" style="display:none; margin-top:18px;">
+                        <button id="btnTerminarAyudaExplicito" type="button"
+                            style="width:100%; padding:16px 24px; border:none; background:#ef4444; color:white;
+                                   border-radius:14px; font-size:1.15rem; font-weight:800; cursor:pointer;
+                                   box-shadow:0 6px 20px rgba(239,68,68,0.35);
+                                   transition:transform .18s ease, background-color .18s ease;">
+                            ✅ Terminar Ayuda Recibida
+                        </button>
+                        <p style="text-align:center; color:#6b7280; font-size:0.88rem; margin-top:8px;">
+                            Presiona cuando el voluntario haya completado su asistencia
+                        </p>
+                    </div>
+
                     <!-- Mapa del voluntario -->
                     <div id="mapaVoluntarioWrapper" class="ml-map-wrapper">
                         <div class="ml-map-header">
@@ -452,7 +467,7 @@
 
         <!-- Toast global -->
         <div id="mlToast" class="ml-toast"></div>
-        <!-- Leaflet JS -->
+        <!-- Leaflet JS (CSS ya está en layoutDis.html) -->
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
                 integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN2GKm8=" crossorigin=""></script>
         <script th:inline="javascript">
@@ -542,10 +557,19 @@
 
             const initMap = (latVol, lngVol, latMi, lngMi) => {
                 const wrapper = document.getElementById('mapaVoluntarioWrapper');
-                if (wrapper) wrapper.style.display = 'block';
+
+                // CRÍTICO: mostrar el wrapper ANTES de inicializar Leaflet,
+                // de lo contrario el contenedor tiene dimensiones 0 y el mapa no se renderiza
+                if (wrapper) {
+                    wrapper.style.display = 'block';
+                    wrapper.style.visibility = 'visible';
+                }
 
                 if (!leafletMap) {
-                    // Asegurar que el contenedor ya es visible antes de inicializar
+                    // Pequeño delay para que el DOM actualice el layout antes de crear el mapa
+                    const mapContainer = document.getElementById('mapaVoluntario');
+                    if (mapContainer) mapContainer.style.height = '340px';
+
                     leafletMap = L.map('mapaVoluntario', {
                         zoomControl: true,
                         attributionControl: true
@@ -598,10 +622,20 @@
                     leafletMap.setView([latVol, lngVol], 15);
                 }
 
-                // Llamar invalidateSize en múltiples momentos para garantizar render correcto
+                // Invalidar tamaño en múltiples momentos para garantizar render correcto
+                // El primer invalidateSize debe ocurrir DESPUÉS de que el navegador repinte
                 requestAnimationFrame(() => {
-                    if (leafletMap) leafletMap.invalidateSize();
-                    setTimeout(() => leafletMap && leafletMap.invalidateSize(), 400);
+                    requestAnimationFrame(() => {
+                        if (leafletMap) {
+                            leafletMap.invalidateSize({ animate: false });
+                        }
+                        setTimeout(() => {
+                            if (leafletMap) leafletMap.invalidateSize({ animate: false });
+                        }, 300);
+                        setTimeout(() => {
+                            if (leafletMap) leafletMap.invalidateSize({ animate: false });
+                        }, 800);
+                    });
                 });
             };
 
@@ -652,9 +686,13 @@
                     btn.disabled = false;
                     btn.textContent = 'Solicitar Ayuda Ahora';
                     btn.style.background = 'var(--ml-green)';
+                    btn.style.removeProperty('transform');
                 }
                 if (btnCancelar) btnCancelar.disabled = false;
                 if (info) info.style.display = 'none';
+                // Ocultar sección de terminar ayuda
+                const secTerminar = document.getElementById('seccionTerminarAyuda');
+                if (secTerminar) secTerminar.style.display = 'none';
                 resetMapaYsesion();
             };
 
@@ -662,9 +700,13 @@
                 if (buscando) buscando.style.display = 'none';
                 if (btn) {
                     btn.disabled = false;
-                    btn.textContent = '✅ Terminar Ayuda';
-                    btn.style.background = '#ef4444';
+                    btn.textContent = 'Solicitar Ayuda Ahora';
+                    btn.style.background = 'var(--ml-green)';
+                    btn.style.display = 'none'; // Ocultar el botón principal durante sesión activa
                 }
+                // Mostrar botón explícito de terminar ayuda
+                const secTerminar = document.getElementById('seccionTerminarAyuda');
+                if (secTerminar) secTerminar.style.display = 'block';
             };
 
             const setUIBuscando = (solicitudId) => {
@@ -810,9 +852,12 @@
                             }
                             break;
                         case 'SOLICITUD_CANCELADA':
+                        case 'SOLICITUD_CANCELADA_POR_USUARIO':
                             sesionAceptada = false;
                             setEstado(data.mensaje || 'La solicitud fue cancelada.');
                             showToast(data.mensaje || 'La solicitud fue cancelada.', 'warning', 4000);
+                            // Restaurar visibilidad del botón principal
+                            if (btn) btn.style.display = '';
                             setUIIdle();
                             break;
                     }
@@ -827,21 +872,25 @@
                 };
             };
 
-            btn?.addEventListener('click', () => {
-                // Si la sesión está aceptada, el botón sirve para TERMINAR la ayuda
-                if (sesionAceptada) {
-                    if (!socket || socket.readyState !== WebSocket.OPEN) {
-                        setEstado('Sin conexión con el servidor.');
-                        return;
-                    }
-                    if (solicitudActivaId) {
-                        socket.send(JSON.stringify({ type: 'CANCELAR_SOLICITUD', solicitudId: solicitudActivaId }));
-                    }
-                    setEstado('Ayuda finalizada. Puedes solicitar ayuda nuevamente.');
-                    showToast('✅ Ayuda finalizada correctamente.', 'success', 4000);
-                    setUIIdle();
+            // Función compartida para terminar la ayuda
+            const terminarAyudaActiva = () => {
+                if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    setEstado('Sin conexión con el servidor.');
                     return;
                 }
+                if (solicitudActivaId) {
+                    socket.send(JSON.stringify({ type: 'CANCELAR_SOLICITUD', solicitudId: solicitudActivaId }));
+                }
+                sesionAceptada = false;
+                if (btn) btn.style.display = ''; // Restaurar visibilidad botón principal
+                setEstado('Ayuda finalizada. Puedes solicitar ayuda nuevamente.');
+                showToast('✅ Ayuda finalizada correctamente.', 'success', 4000);
+                setUIIdle();
+            };
+
+            // Botón principal: solo para solicitar ayuda
+            btn?.addEventListener('click', () => {
+                if (sesionAceptada) return; // El botón principal no actúa durante sesión activa
 
                 if (!socket || socket.readyState !== WebSocket.OPEN) {
                     setEstado('Conectando... intenta en unos segundos.');
@@ -863,6 +912,24 @@
                 flushLastPosition();
                 socket.send(JSON.stringify({ type: 'AYUDA_SOLICITADA' }));
             });
+
+            // Botón explícito de terminar ayuda
+            document.getElementById('btnTerminarAyudaExplicito')?.addEventListener('click', () => {
+                terminarAyudaActiva();
+            });
+
+            // Efecto hover botón terminar
+            const btnTerminarExpl = document.getElementById('btnTerminarAyudaExplicito');
+            if (btnTerminarExpl) {
+                btnTerminarExpl.addEventListener('mouseenter', () => {
+                    btnTerminarExpl.style.background = '#dc2626';
+                    btnTerminarExpl.style.transform = 'scale(1.02)';
+                });
+                btnTerminarExpl.addEventListener('mouseleave', () => {
+                    btnTerminarExpl.style.background = '#ef4444';
+                    btnTerminarExpl.style.transform = 'scale(1)';
+                });
+            }
 
             btnCancelar?.addEventListener('click', () => {
                 if (!socket || socket.readyState !== WebSocket.OPEN) {

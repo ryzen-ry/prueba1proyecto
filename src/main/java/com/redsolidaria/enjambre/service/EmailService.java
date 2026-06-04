@@ -63,8 +63,13 @@ public class EmailService {
         mensaje.setText("Hola,\n\nTu cuenta no fue activada porque no cumple los requisitos. Puedes volver a registrarte corrigiendo la información.\n\n" +
                         "Saludos,\nEquipo Red Solidaria UTP");
 
-        mailSender.send(mensaje);
-        System.out.println("✓ Correo de rechazo enviado a: " + emailDestino);
+        try {
+            mailSender.send(mensaje);
+            System.out.println("✓ Correo de rechazo enviado a: " + emailDestino);
+        } catch (Exception e) {
+            System.err.println("❌ ERROR al enviar correo de rechazo a " + emailDestino + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Async
@@ -78,8 +83,13 @@ public class EmailService {
                         "Tu contribución ha sido verificada y confirmada con éxito. Gracias a ti, podremos seguir brindando apoyo y adquiriendo productos de primera necesidad para quienes más lo necesitan.\n\n" +
                         "Saludos,\nEquipo Red Solidaria UTP");
 
-        mailSender.send(mensaje);
-        System.out.println("✓ Correo de confirmación monetaria enviado a: " + emailDestino + " | Monto: S/. " + monto);
+        try {
+            mailSender.send(mensaje);
+            System.out.println("✓ Correo de confirmación monetaria enviado a: " + emailDestino + " | Monto: S/. " + monto);
+        } catch (Exception e) {
+            System.err.println("❌ ERROR al enviar correo de confirmación monetaria a " + emailDestino + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Async
@@ -93,8 +103,13 @@ public class EmailService {
                         "Por este motivo, la donación ha sido marcada como rechazada. Si crees que se trata de un error, por favor ponte en contacto con nosotros o intenta registrarla nuevamente.\n\n" +
                         "Saludos,\nEquipo Red Solidaria UTP");
 
-        mailSender.send(mensaje);
-        System.out.println("✓ Correo de rechazo monetaria enviado a: " + emailDestino);
+        try {
+            mailSender.send(mensaje);
+            System.out.println("✓ Correo de rechazo monetaria enviado a: " + emailDestino);
+        } catch (Exception e) {
+            System.err.println("❌ ERROR al enviar correo de rechazo monetaria a " + emailDestino + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Async
@@ -111,8 +126,13 @@ public class EmailService {
                         "Por favor, ten el producto listo. ¡Muchas gracias por tu valioso apoyo!\n\n" +
                         "Saludos,\nEquipo Red Solidaria UTP");
 
-        mailSender.send(mensaje);
-        System.out.println("✓ Correo de recojo de producto enviado a: " + emailDestino + " | Producto: " + producto);
+        try {
+            mailSender.send(mensaje);
+            System.out.println("✓ Correo de recojo de producto enviado a: " + emailDestino + " | Producto: " + producto);
+        } catch (Exception e) {
+            System.err.println("❌ ERROR al enviar correo de recojo de producto a " + emailDestino + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Async
@@ -129,8 +149,13 @@ public class EmailService {
                         "¡Muchas gracias por tu valioso apoyo para nuestra comunidad!\n\n" +
                         "Saludos,\nEquipo Red Solidaria UTP");
 
-        mailSender.send(mensaje);
-        System.out.println("✓ Correo de entrega de producto en sede enviado a: " + emailDestino + " | Producto: " + producto);
+        try {
+            mailSender.send(mensaje);
+            System.out.println("✓ Correo de entrega de producto en sede enviado a: " + emailDestino + " | Producto: " + producto);
+        } catch (Exception e) {
+            System.err.println("❌ ERROR al enviar correo de entrega en sede a " + emailDestino + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Async
@@ -145,7 +170,12 @@ public class EmailService {
                         "Esperamos poder contar con tu ayuda en futuras oportunidades.\n\n" +
                         "Saludos,\nEquipo Red Solidaria UTP");
 
-        mailSender.send(mensaje);
-        System.out.println("✓ Correo de rechazo producto enviado a: " + emailDestino);
+        try {
+            mailSender.send(mensaje);
+            System.out.println("✓ Correo de rechazo producto enviado a: " + emailDestino);
+        } catch (Exception e) {
+            System.err.println("❌ ERROR al enviar correo de rechazo de producto a " + emailDestino + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }
