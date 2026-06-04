@@ -37,7 +37,8 @@
                 0%,100%{ transform:scale(1); opacity:1; }
                 50%{ transform:scale(1.6); opacity:0.5; }
             }
-            #mapaVoluntario { height: 340px; }
+            #mapaVoluntario { height: 340px; min-height: 340px; width: 100%; }
+            .ml-map-wrapper.is-visible { display: block !important; visibility: visible !important; }
 
             /* Toast de estado */
             .ml-toast {
@@ -472,8 +473,27 @@
                 integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN2GKm8=" crossorigin=""></script>
         <script th:inline="javascript">
         (() => {
-            const currentUsuarioId = [[${session.usuario != null ? session.usuario.id : null}]];
-            const currentUsuarioRol = [[${session.usuario != null ? session.usuario.rol : null}]];
+            const currentUsuarioId = /*[[${session.usuario != null ? session.usuario.id : null}]]*/ null;
+            const currentUsuarioRol = /*[[${session.usuario != null ? session.usuario.rol : null}]]*/ null;
+
+            const isValidCoord = (lat, lng) => {
+                const la = Number(lat);
+                const ln = Number(lng);
+                return Number.isFinite(la) && Number.isFinite(ln)
+                    && Math.abs(la) <= 90 && Math.abs(ln) <= 180;
+            };
+
+            const ensureLeaflet = () => typeof L !== 'undefined';
+
+            const scheduleMapInvalidate = (map) => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        if (map) map.invalidateSize({ animate: false });
+                        setTimeout(() => { if (map) map.invalidateSize({ animate: false }); }, 300);
+                        setTimeout(() => { if (map) map.invalidateSize({ animate: false }); }, 800);
+                    });
+                });
+            };
 
             const btn = document.getElementById('btnAyuda');
             const estado = document.getElementById('estadoAyuda');
@@ -555,93 +575,98 @@
                 leafletMap.fitBounds(bounds, { padding: [50, 50], animate });
             };
 
-            const initMap = (latVol, lngVol, latMi, lngMi) => {
+            const showMapWrapper = () => {
                 const wrapper = document.getElementById('mapaVoluntarioWrapper');
-
-                // CRÍTICO: mostrar el wrapper ANTES de inicializar Leaflet,
-                // de lo contrario el contenedor tiene dimensiones 0 y el mapa no se renderiza
                 if (wrapper) {
+                    wrapper.classList.add('is-visible');
                     wrapper.style.display = 'block';
                     wrapper.style.visibility = 'visible';
                 }
+            };
 
-                if (!leafletMap) {
-                    // Pequeño delay para que el DOM actualice el layout antes de crear el mapa
+            const initMap = (latVol, lngVol, latMi, lngMi) => {
+                if (!ensureLeaflet()) {
+                    showToast('No se cargó Leaflet. Recarga la página.', 'error', 5000);
+                    return;
+                }
+                if (!isValidCoord(latVol, lngVol)) {
+                    showToast('Ubicación del voluntario no disponible.', 'warning', 4000);
+                    return;
+                }
+
+                const latV = Number(latVol);
+                const lngV = Number(lngVol);
+                const latM = latMi != null && lngMi != null && isValidCoord(latMi, lngMi) ? Number(latMi) : null;
+                const lngM = latM != null ? Number(lngMi) : null;
+
+                showMapWrapper();
+
+                const buildMarkers = () => {
                     const mapContainer = document.getElementById('mapaVoluntario');
                     if (mapContainer) mapContainer.style.height = '340px';
 
-                    leafletMap = L.map('mapaVoluntario', {
-                        zoomControl: true,
-                        attributionControl: true
-                    });
-                    // Cargar tiles de OpenStreetMap
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                        maxZoom: 19,
-                        subdomains: ['a', 'b', 'c']
-                    }).addTo(leafletMap);
-                    // Vista inicial centrada en el voluntario
-                    leafletMap.setView([latVol, lngVol], 15);
-                }
-
-                // Icono voluntario (azul)
-                const iconVol = L.divIcon({
-                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);color:white;font-size:18px;">🙋</div>`,
-                    className: '',
-                    iconSize: [38, 38],
-                    iconAnchor: [19, 19]
-                });
-
-                // Icono yo (verde)
-                const iconMi = L.divIcon({
-                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#4a9d5f;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(74,157,95,0.55);color:white;font-size:18px;">📍</div>`,
-                    className: '',
-                    iconSize: [38, 38],
-                    iconAnchor: [19, 19]
-                });
-
-                if (volMarker) {
-                    volMarker.setLatLng([latVol, lngVol]);
-                } else {
-                    volMarker = L.marker([latVol, lngVol], { icon: iconVol })
-                        .addTo(leafletMap)
-                        .bindPopup('<b>🙋 Voluntario</b><br>En camino hacia ti');
-                }
-
-                if (latMi != null && lngMi != null) {
-                    if (miMarker) {
-                        miMarker.setLatLng([latMi, lngMi]);
-                    } else {
-                        miMarker = L.marker([latMi, lngMi], { icon: iconMi })
-                            .addTo(leafletMap)
-                            .bindPopup('<b>📍 Tu ubicación</b>');
+                    if (!leafletMap) {
+                        leafletMap = L.map('mapaVoluntario', {
+                            zoomControl: true,
+                            attributionControl: true
+                        });
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; OpenStreetMap',
+                            maxZoom: 19
+                        }).addTo(leafletMap);
                     }
-                    fitBothMarkers(false);
-                    updateRuta();
-                } else {
-                    leafletMap.setView([latVol, lngVol], 15);
-                }
 
-                // Invalidar tamaño en múltiples momentos para garantizar render correcto
-                // El primer invalidateSize debe ocurrir DESPUÉS de que el navegador repinte
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        if (leafletMap) {
-                            leafletMap.invalidateSize({ animate: false });
-                        }
-                        setTimeout(() => {
-                            if (leafletMap) leafletMap.invalidateSize({ animate: false });
-                        }, 300);
-                        setTimeout(() => {
-                            if (leafletMap) leafletMap.invalidateSize({ animate: false });
-                        }, 800);
+                    const iconVol = L.divIcon({
+                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);color:white;font-size:18px;">🙋</div>',
+                        className: '',
+                        iconSize: [38, 38],
+                        iconAnchor: [19, 19]
                     });
-                });
+                    const iconMi = L.divIcon({
+                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#4a9d5f;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(74,157,95,0.55);color:white;font-size:18px;">📍</div>',
+                        className: '',
+                        iconSize: [38, 38],
+                        iconAnchor: [19, 19]
+                    });
+
+                    if (volMarker) {
+                        volMarker.setLatLng([latV, lngV]);
+                    } else {
+                        volMarker = L.marker([latV, lngV], { icon: iconVol })
+                            .addTo(leafletMap)
+                            .bindPopup('<b>🙋 Voluntario</b><br>En camino hacia ti');
+                    }
+
+                    if (latM != null && lngM != null) {
+                        if (miMarker) {
+                            miMarker.setLatLng([latM, lngM]);
+                        } else {
+                            miMarker = L.marker([latM, lngM], { icon: iconMi })
+                                .addTo(leafletMap)
+                                .bindPopup('<b>📍 Tu ubicación</b>');
+                        }
+                        fitBothMarkers(false);
+                        updateRuta();
+                    } else {
+                        leafletMap.setView([latV, lngV], 15);
+                    }
+
+                    scheduleMapInvalidate(leafletMap);
+                };
+
+                requestAnimationFrame(() => requestAnimationFrame(buildMarkers));
             };
 
-            // Llamado cuando llega UBICACION_ACTUALIZADA del voluntario
             const updateVolMarker = (lat, lng) => {
-                if (!leafletMap || !volMarker) return;
+                if (!isValidCoord(lat, lng)) return;
+                if (!leafletMap || !volMarker) {
+                    if (sesionAceptada) {
+                        const myLat = lastPosition?.lat ?? null;
+                        const myLng = lastPosition?.lng ?? null;
+                        initMap(Number(lat), Number(lng), myLat, myLng);
+                    }
+                    return;
+                }
                 volMarker.setLatLng([lat, lng]);
                 updateRuta();
                 if (miMarker) {
@@ -651,9 +676,24 @@
                 }
             };
 
-            // Llamado cuando el GPS del discapacitado actualiza su propia posición
             const updateMiMarker = (lat, lng) => {
-                if (!leafletMap || !miMarker) return;
+                if (!isValidCoord(lat, lng) || !leafletMap) return;
+                if (!miMarker) {
+                    const iconMi = L.divIcon({
+                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#4a9d5f;border:3px solid white;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;">📍</div>',
+                        className: '',
+                        iconSize: [38, 38],
+                        iconAnchor: [19, 19]
+                    });
+                    miMarker = L.marker([lat, lng], { icon: iconMi })
+                        .addTo(leafletMap)
+                        .bindPopup('<b>📍 Tu ubicación</b>');
+                    if (volMarker) {
+                        fitBothMarkers(false);
+                        updateRuta();
+                    }
+                    return;
+                }
                 miMarker.setLatLng([lat, lng]);
                 updateRuta();
             };
@@ -664,9 +704,11 @@
 
             const resetMapaYsesion = () => {
                 sesionAceptada = false;
-                // Ocultar mapa
                 const wrapper = document.getElementById('mapaVoluntarioWrapper');
-                if (wrapper) wrapper.style.display = 'none';
+                if (wrapper) {
+                    wrapper.style.display = 'none';
+                    wrapper.classList.remove('is-visible');
+                }
                 // Destruir el mapa para que la próxima sesión empiece limpio
                 if (leafletMap) {
                     leafletMap.remove();
@@ -747,11 +789,12 @@
                 `;
                 info.style.display = 'block';
 
-                // Inicializar mapa
-                const myLat = lastPosition ? lastPosition.lat : null;
-                const myLng = lastPosition ? lastPosition.lng : null;
+                const myLat = lastPosition?.lat ?? null;
+                const myLng = lastPosition?.lng ?? null;
                 if (ub.lat != null && ub.lng != null) {
                     initMap(Number(ub.lat), Number(ub.lng), myLat, myLng);
+                } else {
+                    showToast('Esperando ubicación del voluntario en el mapa...', 'warning', 4000);
                 }
             };
 
@@ -785,9 +828,10 @@
                             }));
                         }
 
-                        // Actualizar nuestro propio marcador en el mapa si ya está abierto
-                        if (sesionAceptada && leafletMap && miMarker) {
+                        if (sesionAceptada && leafletMap) {
                             updateMiMarker(lat, lng);
+                        } else if (sesionAceptada && !leafletMap && lastPosition) {
+                            flushLastPosition();
                         }
                     },
                     () => {
@@ -810,8 +854,16 @@
             };
 
             const connectWs = () => {
+                if (currentUsuarioId == null || !currentUsuarioRol) {
+                    setEstado('Debes iniciar sesión para solicitar ayuda.');
+                    return;
+                }
                 const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-                const wsUrl = wsProtocol + window.location.host + '/ws/ayuda?usuarioId=' + currentUsuarioId + '&usuarioRol=' + currentUsuarioRol;
+                const params = new URLSearchParams({
+                    usuarioId: String(currentUsuarioId),
+                    usuarioRol: String(currentUsuarioRol)
+                });
+                const wsUrl = wsProtocol + window.location.host + '/ws/ayuda?' + params.toString();
 
                 socket = new WebSocket(wsUrl);
 
@@ -838,12 +890,20 @@
                             break;
                         case 'SOLICITUD_ACEPTADA':
                             sesionAceptada = true;
-                            // Guardar solicitudId en caso de que venga actualizado
                             if (data.solicitudId) solicitudActivaId = data.solicitudId;
                             setEstado('✅ Solicitud aceptada. Voluntario en camino.');
                             showToast('✅ ¡Voluntario en camino! El mapa se actualiza en tiempo real.', 'success', 5000);
-                            renderVoluntario(data.voluntario, data.ubicacionVoluntario);
+                            if (data.ubicacionVoluntario?.lat != null && data.ubicacionVoluntario?.lng != null) {
+                                renderVoluntario(data.voluntario, data.ubicacionVoluntario);
+                            } else {
+                                renderVoluntario(data.voluntario, {});
+                                showToast('Ubicación del voluntario en camino...', 'warning', 4000);
+                            }
                             setUIAceptada();
+                            break;
+                        case 'ERROR':
+                            setEstado(data.mensaje || 'Ocurrió un error.');
+                            showToast(data.mensaje || 'Ocurrió un error.', 'error', 5000);
                             break;
                         case 'UBICACION_ACTUALIZADA':
                             // Actualizar marcador del voluntario en tiempo real

@@ -165,6 +165,16 @@ public class AyudaService {
                 return;
             }
 
+            UbicacionUsuario ubicacionDis = ubicacionUsuarioRepository
+                    .findByUsuario_Id(solicitud.getDiscapacitado().getId()).orElse(null);
+            if (ubicacionDis == null) {
+                Map<String, Object> errVol = new HashMap<>();
+                errVol.put("type", "ERROR");
+                errVol.put("mensaje", "El beneficiario aún no tiene ubicación GPS activa. Espera unos segundos e intenta de nuevo.");
+                connectionRegistry.sendToUser(voluntarioId, errVol);
+                return;
+            }
+
             intento.setEstado("ACEPTADA");
             intento.setRespondidaEn(ahora);
             solicitudAyudaIntentoRepository.save(intento);
@@ -177,10 +187,6 @@ public class AyudaService {
             solicitud.setEstado("ACEPTADA");
             solicitud.setAceptadaEn(ahora);
             solicitudAyudaRepository.save(solicitud);
-
-            // Enviar ubicación e información entre ambos usuarios.
-            UbicacionUsuario ubicacionDis = ubicacionUsuarioRepository
-                    .findByUsuario_Id(solicitud.getDiscapacitado().getId()).orElse(null);
 
             // Payload para el discapacitado: datos del voluntario + su ubicación
             Map<String, Object> payloadDis = new HashMap<>();
@@ -196,9 +202,7 @@ public class AyudaService {
             payloadVol.put("type", "CONFIRMACION_ACEPTACION");
             payloadVol.put("solicitudId", solicitud.getId());
             payloadVol.put("discapacitado", mapDiscapacitado(solicitud.getDiscapacitado()));
-            if (ubicacionDis != null) {
-                payloadVol.put("ubicacionDiscapacitado", mapUbicacion(ubicacionDis));
-            }
+            payloadVol.put("ubicacionDiscapacitado", mapUbicacion(ubicacionDis));
 
             connectionRegistry.sendToUser(voluntario.getId(), payloadVol);
 
