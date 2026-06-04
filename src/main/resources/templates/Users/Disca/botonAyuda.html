@@ -668,16 +668,16 @@
                     }
 
                     const iconVol = L.divIcon({
-                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);color:white;font-size:18px;">🙋</div>',
+                        html: '<div style="width:40px;height:40px;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);clip-path: polygon(50% 0%, 100% 50%, 82% 82%, 50% 95%, 18% 82%, 0% 50%);"><svg viewBox="0 0 24 24" fill="currentColor" style="width:24px;height:24px;color:white;"><path d="M7 14l5-5 5 5z"/></svg></div>',
                         className: '',
-                        iconSize: [38, 38],
-                        iconAnchor: [19, 19]
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
                     });
                     const iconMi = L.divIcon({
-                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#4a9d5f;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(74,157,95,0.55);color:white;font-size:18px;">📍</div>',
+                        html: '<div style="width:40px;height:40px;background:#ef4444;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(239,68,68,0.55);clip-path: polygon(50% 0%, 100% 50%, 82% 82%, 50% 95%, 18% 82%, 0% 50%);"><svg viewBox="0 0 24 24" fill="currentColor" style="width:24px;height:24px;color:white;"><path d="M7 14l5-5 5 5z"/></svg></div>',
                         className: '',
-                        iconSize: [38, 38],
-                        iconAnchor: [19, 19]
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
                     });
 
                     if (volMarker) {
@@ -685,7 +685,7 @@
                     } else {
                         volMarker = L.marker([latV, lngV], { icon: iconVol })
                             .addTo(leafletMap)
-                            .bindPopup('<b>🙋 Voluntario</b><br>En camino hacia ti');
+                            .bindPopup('<b>↑ Voluntario</b><br>En camino hacia ti');
                     }
 
                     if (latM != null && lngM != null) {
@@ -694,7 +694,7 @@
                         } else {
                             miMarker = L.marker([latM, lngM], { icon: iconMi })
                                 .addTo(leafletMap)
-                                .bindPopup('<b>📍 Tu ubicación</b>');
+                                .bindPopup('<b>↑ Tu ubicación</b>');
                         }
                         fitBothMarkers(false);
                         updateRuta();
@@ -731,14 +731,14 @@
                 if (!isValidCoord(lat, lng) || !leafletMap) return;
                 if (!miMarker) {
                     const iconMi = L.divIcon({
-                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#4a9d5f;border:3px solid white;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;">📍</div>',
+                        html: '<div style="width:40px;height:40px;background:#ef4444;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(239,68,68,0.55);clip-path: polygon(50% 0%, 100% 50%, 82% 82%, 50% 95%, 18% 82%, 0% 50%);"><svg viewBox="0 0 24 24" fill="currentColor" style="width:24px;height:24px;color:white;"><path d="M7 14l5-5 5 5z"/></svg></div>',
                         className: '',
-                        iconSize: [38, 38],
-                        iconAnchor: [19, 19]
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
                     });
                     miMarker = L.marker([lat, lng], { icon: iconMi })
                         .addTo(leafletMap)
-                        .bindPopup('<b>📍 Tu ubicación</b>');
+                        .bindPopup('<b>↑ Tu ubicación</b>');
                     if (volMarker) {
                         fitBothMarkers(false);
                         updateRuta();
