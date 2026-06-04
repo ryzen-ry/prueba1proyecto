@@ -420,7 +420,7 @@
                         <div id="mapaVoluntario"></div>
                         <div class="ml-map-legend">
                             <span><span class="ml-legend-dot" style="background:#3b82f6"></span> Voluntario</span>
-                            <span><span class="ml-legend-dot" style="background:#4a9d5f"></span> Tu posición</span>
+                            <span><span class="ml-legend-dot" style="background:#ef4444"></span> Tu posición</span>
                             <span id="mapDistancia" class="ml-map-distance"></span>
                         </div>
                     </div>
@@ -668,16 +668,16 @@
                     }
 
                     const iconVol = L.divIcon({
-                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);color:white;font-size:18px;">🙋</div>',
+                        html: '<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0px 3px 5px rgba(59,130,246,0.6));"><path d="M12 2L3.5 20.5L12 16L20.5 20.5L12 2Z" fill="#3b82f6" stroke="white" stroke-width="2" stroke-linejoin="round"/></svg></div>',
                         className: '',
-                        iconSize: [38, 38],
-                        iconAnchor: [19, 19]
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
                     });
                     const iconMi = L.divIcon({
-                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#4a9d5f;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(74,157,95,0.55);color:white;font-size:18px;">📍</div>',
+                        html: '<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0px 3px 5px rgba(239,68,68,0.6));"><path d="M12 2L3.5 20.5L12 16L20.5 20.5L12 2Z" fill="#ef4444" stroke="white" stroke-width="2" stroke-linejoin="round"/></svg></div>',
                         className: '',
-                        iconSize: [38, 38],
-                        iconAnchor: [19, 19]
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
                     });
 
                     if (volMarker) {
@@ -708,6 +708,37 @@
                 requestAnimationFrame(() => requestAnimationFrame(buildMarkers));
             };
 
+            const animateMarkerTo = (marker, destLat, destLng, duration = 1200, callback = null) => {
+                if (!marker) return;
+                const startLatLng = marker.getLatLng();
+                const startLat = startLatLng.lat;
+                const startLng = startLatLng.lng;
+                const startTime = performance.now();
+
+                const step = (now) => {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    const ease = progress < 0.5 
+                        ? 2 * progress * progress 
+                        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+                    const curLat = startLat + (destLat - startLat) * ease;
+                    const curLng = startLng + (destLng - startLng) * ease;
+
+                    marker.setLatLng([curLat, curLng]);
+                    if (callback) callback();
+
+                    if (progress < 1) {
+                        requestAnimationFrame(step);
+                    } else {
+                        marker.setLatLng([destLat, destLng]);
+                        if (callback) callback();
+                    }
+                };
+                requestAnimationFrame(step);
+            };
+
             const updateVolMarker = (lat, lng) => {
                 if (!isValidCoord(lat, lng)) return;
                 if (!leafletMap || !volMarker) {
@@ -718,8 +749,9 @@
                     }
                     return;
                 }
-                volMarker.setLatLng([lat, lng]);
-                updateRuta();
+                animateMarkerTo(volMarker, Number(lat), Number(lng), 1000, () => {
+                    updateRuta();
+                });
                 if (miMarker) {
                     fitBothMarkers(true);
                 } else {
@@ -731,10 +763,10 @@
                 if (!isValidCoord(lat, lng) || !leafletMap) return;
                 if (!miMarker) {
                     const iconMi = L.divIcon({
-                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#4a9d5f;border:3px solid white;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;">📍</div>',
+                        html: '<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0px 3px 5px rgba(239,68,68,0.6));"><path d="M12 2L3.5 20.5L12 16L20.5 20.5L12 2Z" fill="#ef4444" stroke="white" stroke-width="2" stroke-linejoin="round"/></svg></div>',
                         className: '',
-                        iconSize: [38, 38],
-                        iconAnchor: [19, 19]
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
                     });
                     miMarker = L.marker([lat, lng], { icon: iconMi })
                         .addTo(leafletMap)
@@ -745,8 +777,9 @@
                     }
                     return;
                 }
-                miMarker.setLatLng([lat, lng]);
-                updateRuta();
+                animateMarkerTo(miMarker, Number(lat), Number(lng), 1000, () => {
+                    updateRuta();
+                });
             };
 
             const setEstado = (msg) => {
@@ -891,6 +924,42 @@
                     },
                     { enableHighAccuracy: true, maximumAge: 500, timeout: 10000 }
                 );
+
+                // Refresco continuo de ubicación cada 3 segundos cuando la sesión de ayuda está aceptada y activa
+                setInterval(() => {
+                    if (sesionAceptada && navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                                locationEnabled = true;
+                                const lat = pos.coords.latitude;
+                                const lng = pos.coords.longitude;
+                                const precision = pos.coords.accuracy;
+                                const now = Date.now();
+
+                                lastPosition = { lat, lng, precisionMetros: precision, timestamp: now };
+
+                                if (socket && wsOpen) {
+                                    lastSentAt = now;
+                                    socket.send(JSON.stringify({
+                                        type: 'LOCATION_UPDATE',
+                                        lat,
+                                        lng,
+                                        precisionMetros: precision,
+                                        timestamp: now
+                                    }));
+                                }
+
+                                if (leafletMap) {
+                                    updateMiMarker(lat, lng);
+                                }
+                            },
+                            (err) => {
+                                console.warn('[geolocalizacion] Error en refresco continuo 3s:', err);
+                            },
+                            { enableHighAccuracy: true, maximumAge: 0, timeout: 2500 }
+                        );
+                    }
+                }, 3000);
             };
 
             const flushLastPosition = () => {
