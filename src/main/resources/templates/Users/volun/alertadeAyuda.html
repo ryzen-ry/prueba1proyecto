@@ -627,6 +627,7 @@
             let locationEnabled = false;
             let lastSentAt = 0;
             let lastPosition = null;
+            let lastSentPosition = null; // Filtrado de 2 metros para evitar ruido del GPS
             let sesionAceptada = false;
 
             // solicitudId -> data
@@ -1103,8 +1104,19 @@
                         // Reducir intervalo a 3s cuando hay sesión aceptada activa
                         const intervalo = sesionAceptada ? 3000 : 5000;
 
-                        if (socket && wsOpen && now - lastSentAt >= intervalo) {
+                        let debereEnviar = false;
+                        if (!lastSentPosition) {
+                            debereEnviar = true;
+                        } else {
+                            const distMeters = calcDistKm(lat, lng, lastSentPosition.lat, lastSentPosition.lng) * 1000;
+                            if (distMeters >= 2.0) {
+                                debereEnviar = true;
+                            }
+                        }
+
+                        if (debereEnviar && socket && wsOpen && now - lastSentAt >= intervalo) {
                             lastSentAt = now;
+                            lastSentPosition = { lat, lng };
                             socket.send(JSON.stringify({
                                 type: 'LOCATION_UPDATE',
                                 lat,
@@ -1137,8 +1149,19 @@
 
                                 lastPosition = { lat, lng, precisionMetros: precision, timestamp: now };
 
-                                if (socket && wsOpen) {
+                                let debereEnviar = false;
+                                if (!lastSentPosition) {
+                                    debereEnviar = true;
+                                } else {
+                                    const distMeters = calcDistKm(lat, lng, lastSentPosition.lat, lastSentPosition.lng) * 1000;
+                                    if (distMeters >= 2.0) {
+                                        debereEnviar = true;
+                                    }
+                                }
+
+                                if (debereEnviar && socket && wsOpen) {
                                     lastSentAt = now;
+                                    lastSentPosition = { lat, lng };
                                     socket.send(JSON.stringify({
                                         type: 'LOCATION_UPDATE',
                                         lat,
@@ -1167,6 +1190,7 @@
                 const now = Date.now();
                 if (now - lastSentAt < 800) return true;
                 lastSentAt = now;
+                lastSentPosition = { lat: lastPosition.lat, lng: lastPosition.lng };
                 socket.send(JSON.stringify({ type: 'LOCATION_UPDATE', ...lastPosition, timestamp: now }));
                 return true;
             };
