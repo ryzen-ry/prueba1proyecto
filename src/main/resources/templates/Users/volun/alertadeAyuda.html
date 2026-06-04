@@ -744,16 +744,16 @@
                     }
 
                     const iconDis = L.divIcon({
-                        html: '<div style="width:40px;height:40px;background:#ef4444;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(239,68,68,0.55);clip-path: polygon(50% 0%, 100% 50%, 82% 82%, 50% 95%, 18% 82%, 0% 50%);"><svg viewBox="0 0 24 24" fill="currentColor" style="width:24px;height:24px;color:white;"><path d="M7 14l5-5 5 5z"/></svg></div>',
+                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#f97316;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(249,115,22,0.55);color:white;font-size:18px;">📍</div>',
                         className: '',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 20]
+                        iconSize: [38, 38],
+                        iconAnchor: [19, 19]
                     });
                     const iconMiVol = L.divIcon({
-                        html: '<div style="width:40px;height:40px;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);clip-path: polygon(50% 0%, 100% 50%, 82% 82%, 50% 95%, 18% 82%, 0% 50%);"><svg viewBox="0 0 24 24" fill="currentColor" style="width:24px;height:24px;color:white;"><path d="M7 14l5-5 5 5z"/></svg></div>',
+                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);color:white;font-size:18px;">🙋</div>',
                         className: '',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 20]
+                        iconSize: [38, 38],
+                        iconAnchor: [19, 19]
                     });
 
                     if (disMarker) {
@@ -761,7 +761,7 @@
                     } else {
                         disMarker = L.marker([latD, lngD], { icon: iconDis })
                             .addTo(leafletMap)
-                            .bindPopup('<b>↑ Beneficiario</b><br>Necesita tu ayuda')
+                            .bindPopup('<b>📍 Beneficiario</b><br>Necesita tu ayuda')
                             .openPopup();
                     }
 
@@ -771,7 +771,7 @@
                         } else {
                             miMarkerVol = L.marker([latM, lngM], { icon: iconMiVol })
                                 .addTo(leafletMap)
-                                .bindPopup('<b>↑ Tu ubicación</b>');
+                                .bindPopup('<b>🙋 Tu ubicación</b>');
                         }
                         fitBothMarkersVol(false);
                         updateRutaVol();
@@ -808,14 +808,14 @@
                 if (!isValidCoord(lat, lng) || !leafletMap) return;
                 if (!miMarkerVol) {
                     const iconMiVol = L.divIcon({
-                        html: '<div style="width:40px;height:40px;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);clip-path: polygon(50% 0%, 100% 50%, 82% 82%, 50% 95%, 18% 82%, 0% 50%);"><svg viewBox="0 0 24 24" fill="currentColor" style="width:24px;height:24px;color:white;"><path d="M7 14l5-5 5 5z"/></svg></div>',
+                        html: '<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;">🙋</div>',
                         className: '',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 20]
+                        iconSize: [38, 38],
+                        iconAnchor: [19, 19]
                     });
                     miMarkerVol = L.marker([lat, lng], { icon: iconMiVol })
                         .addTo(leafletMap)
-                        .bindPopup('<b>↑ Tu ubicación</b>');
+                        .bindPopup('<b>🙋 Tu ubicación</b>');
                     if (disMarker) {
                         fitBothMarkersVol(false);
                         updateRutaVol();
