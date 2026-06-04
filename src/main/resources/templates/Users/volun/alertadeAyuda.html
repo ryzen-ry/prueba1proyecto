@@ -5,9 +5,7 @@
 <head></head>
 <body>
     <div th:fragment="content">
-        <!-- Leaflet CSS -->
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-              integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+        <!-- Leaflet CSS ya está en layoutVol.html head, no duplicar -->
         <style>
             /* ── Map container ── */
             .ml-map-wrapper {
@@ -633,9 +631,19 @@
 
             const initMapVol = (latDis, lngDis, latMi, lngMi) => {
                 const wrapper = document.getElementById('mapaDiscapacitadoWrapper');
-                if (wrapper) wrapper.style.display = 'block';
+
+                // CRÍTICO: mostrar el wrapper ANTES de inicializar Leaflet,
+                // de lo contrario el contenedor tiene dimensiones 0 y el mapa no se renderiza
+                if (wrapper) {
+                    wrapper.style.display = 'block';
+                    wrapper.style.visibility = 'visible';
+                }
 
                 if (!leafletMap) {
+                    // Forzar altura explícita en el contenedor del mapa
+                    const mapContainer = document.getElementById('mapaDiscapacitado');
+                    if (mapContainer) mapContainer.style.height = '340px';
+
                     leafletMap = L.map('mapaDiscapacitado', {
                         zoomControl: true,
                         attributionControl: true
@@ -689,10 +697,20 @@
                     leafletMap.setView([latDis, lngDis], 15);
                 }
 
-                // invalidateSize en múltiples momentos
+                // Invalidar tamaño en múltiples momentos para garantizar render correcto
+                // Doble requestAnimationFrame asegura que el layout ya esté calculado
                 requestAnimationFrame(() => {
-                    if (leafletMap) leafletMap.invalidateSize();
-                    setTimeout(() => leafletMap && leafletMap.invalidateSize(), 400);
+                    requestAnimationFrame(() => {
+                        if (leafletMap) {
+                            leafletMap.invalidateSize({ animate: false });
+                        }
+                        setTimeout(() => {
+                            if (leafletMap) leafletMap.invalidateSize({ animate: false });
+                        }, 300);
+                        setTimeout(() => {
+                            if (leafletMap) leafletMap.invalidateSize({ animate: false });
+                        }, 800);
+                    });
                 });
             };
 
