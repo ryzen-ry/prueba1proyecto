@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{Users/volun/layoutVol :: html}"
+      th:replace="~{Users/volun/layoutVol :: html(content=~{::content})}"
       th:with="titulo='Alertas de Ayuda - Voluntario'">
 <head></head>
 <body>
@@ -539,9 +539,6 @@
         <!-- Toast global -->
         <div id="mlToast" class="ml-toast"></div>
 
-        <!-- Leaflet JS -->
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-                integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN2GKm8=" crossorigin=""></script>
         <script th:inline="javascript">
         (() => {
             const currentUsuarioId = /*[[${session.usuario != null ? session.usuario.id : null}]]*/ null;
@@ -554,7 +551,57 @@
                     && Math.abs(la) <= 90 && Math.abs(ln) <= 180;
             };
 
-            const ensureLeaflet = () => typeof L !== 'undefined';
+            const LEAFLET_JS = /*[[@{/vendor/leaflet/leaflet.js}]]*/ '/vendor/leaflet/leaflet.js';
+
+            const waitForLeaflet = (timeoutMs = 15000) => {
+                if (typeof L !== 'undefined') {
+                    return Promise.resolve(L);
+                }
+                return new Promise((resolve, reject) => {
+                    let done = false;
+                    const finish = (ok, value) => {
+                        if (done) return;
+                        done = true;
+                        clearInterval(poll);
+                        clearTimeout(timer);
+                        ok ? resolve(value) : reject(value);
+                    };
+
+                    const poll = setInterval(() => {
+                        if (typeof L !== 'undefined') finish(true, L);
+                    }, 40);
+
+                    const timer = setTimeout(() => {
+                        finish(false, new Error('leaflet-timeout'));
+                    }, timeoutMs);
+
+                    const attach = (script) => {
+                        script.addEventListener('load', () => {
+                            if (typeof L !== 'undefined') finish(true, L);
+                        }, { once: true });
+                        script.addEventListener('error', () => loadScript(), { once: true });
+                    };
+
+                    const loadScript = () => {
+                        const s = document.createElement('script');
+                        s.src = LEAFLET_JS;
+                        s.id = 'leaflet-lib-fallback';
+                        s.onload = () => {
+                            if (typeof L !== 'undefined') finish(true, L);
+                        };
+                        s.onerror = () => finish(false, new Error('leaflet-load-error'));
+                        document.head.appendChild(s);
+                    };
+
+                    const existing = document.getElementById('leaflet-lib')
+                        || document.getElementById('leaflet-lib-fallback');
+                    if (existing) {
+                        attach(existing);
+                    } else {
+                        loadScript();
+                    }
+                });
+            };
 
             const scheduleMapInvalidate = (map) => {
                 requestAnimationFrame(() => {
@@ -660,13 +707,17 @@
                 }
             };
 
-            const initMapVol = (latDis, lngDis, latMi, lngMi) => {
-                if (!ensureLeaflet()) {
-                    showToast('No se cargó Leaflet. Recarga la página.', 'error', 5000);
-                    return;
-                }
+            const initMapVol = async (latDis, lngDis, latMi, lngMi) => {
                 if (!isValidCoord(latDis, lngDis)) {
                     showToast('Ubicación del beneficiario no disponible.', 'warning', 4000);
+                    return;
+                }
+
+                try {
+                    await waitForLeaflet();
+                } catch (e) {
+                    console.error('[mapa] Leaflet no disponible', e);
+                    showToast('No se pudo cargar el mapa. Comprueba tu conexión y recarga.', 'error', 5000);
                     return;
                 }
 
@@ -1143,6 +1194,7 @@
             };
 
             document.addEventListener('DOMContentLoaded', () => {
+                waitForLeaflet().catch((e) => console.warn('[mapa] precarga Leaflet', e));
                 if (lista) lista.innerHTML = '';
                 if (!geoWatchId) startGeolocation();
                 setSinAlertas();

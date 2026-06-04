@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="html (content)">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${titulo} ?: 'Red Solidaria UTP - Voluntario'">Red Solidaria UTP - Voluntario</title>
     <link rel="stylesheet" th:href="@{/css/estilo.css}">
-    <!-- Leaflet CSS global (requerido en head para que el mapa funcione) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Leaflet servido desde el propio servidor (WebJars) — no depende de CDN ni SRI -->
+    <link rel="stylesheet" th:href="@{/vendor/leaflet/leaflet.css}"/>
 </head>
 <body>
+    <script th:src="@{/vendor/leaflet/leaflet.js}" id="leaflet-lib"></script>
 
     <!-- NAVBAR VOLUNTARIO -->
     <nav class="rs-nav">
@@ -42,7 +42,7 @@
 
     <!-- CONTENIDO PRINCIPAL -->
     <div class="rs-page">
-        <div th:replace="${content} :: content"></div>
+        <div th:replace="${content}"></div>
     </div>
 
     <!-- FOOTER -->
