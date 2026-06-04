@@ -5,9 +5,6 @@
 <head></head>
 <body>
     <div th:fragment="content">
-        <!-- Leaflet CSS -->
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-              integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
         <style>
             /* ── Map container ── */
             .ml-map-wrapper {
@@ -548,19 +545,24 @@
                 if (wrapper) wrapper.style.display = 'block';
 
                 if (!leafletMap) {
-                    leafletMap = L.map('mapaVoluntario', { zoomControl: true });
+                    // Asegurar que el contenedor ya es visible antes de inicializar
+                    leafletMap = L.map('mapaVoluntario', {
+                        zoomControl: true,
+                        attributionControl: true
+                    });
+                    // Cargar tiles de OpenStreetMap
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                        maxZoom: 19
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19,
+                        subdomains: ['a', 'b', 'c']
                     }).addTo(leafletMap);
+                    // Vista inicial centrada en el voluntario
+                    leafletMap.setView([latVol, lngVol], 15);
                 }
 
                 // Icono voluntario (azul)
                 const iconVol = L.divIcon({
-                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;
-                            display:flex;align-items:center;justify-content:center;
-                            box-shadow:0 3px 12px rgba(59,130,246,0.55);color:white;font-size:18px;
-                            animation:mlPulseBlue 2s infinite;">🙋</div>`,
+                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);color:white;font-size:18px;">🙋</div>`,
                     className: '',
                     iconSize: [38, 38],
                     iconAnchor: [19, 19]
@@ -568,9 +570,7 @@
 
                 // Icono yo (verde)
                 const iconMi = L.divIcon({
-                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#4a9d5f;border:3px solid white;
-                            display:flex;align-items:center;justify-content:center;
-                            box-shadow:0 3px 12px rgba(74,157,95,0.55);color:white;font-size:18px;">📍</div>`,
+                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#4a9d5f;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(74,157,95,0.55);color:white;font-size:18px;">📍</div>`,
                     className: '',
                     iconSize: [38, 38],
                     iconAnchor: [19, 19]
@@ -598,7 +598,11 @@
                     leafletMap.setView([latVol, lngVol], 15);
                 }
 
-                setTimeout(() => leafletMap && leafletMap.invalidateSize(), 300);
+                // Llamar invalidateSize en múltiples momentos para garantizar render correcto
+                requestAnimationFrame(() => {
+                    if (leafletMap) leafletMap.invalidateSize();
+                    setTimeout(() => leafletMap && leafletMap.invalidateSize(), 400);
+                });
             };
 
             // Llamado cuando llega UBICACION_ACTUALIZADA del voluntario
@@ -624,15 +628,43 @@
                 if (estado) estado.textContent = msg || '';
             };
 
+            const resetMapaYsesion = () => {
+                sesionAceptada = false;
+                // Ocultar mapa
+                const wrapper = document.getElementById('mapaVoluntarioWrapper');
+                if (wrapper) wrapper.style.display = 'none';
+                // Destruir el mapa para que la próxima sesión empiece limpio
+                if (leafletMap) {
+                    leafletMap.remove();
+                    leafletMap = null;
+                    volMarker = null;
+                    miMarker = null;
+                    rutaLine = null;
+                }
+                const distEl = document.getElementById('mapDistancia');
+                if (distEl) distEl.textContent = '';
+            };
+
             const setUIIdle = () => {
                 solicitudActivaId = null;
                 if (buscando) buscando.style.display = 'none';
                 if (btn) {
                     btn.disabled = false;
                     btn.textContent = 'Solicitar Ayuda Ahora';
+                    btn.style.background = 'var(--ml-green)';
                 }
                 if (btnCancelar) btnCancelar.disabled = false;
                 if (info) info.style.display = 'none';
+                resetMapaYsesion();
+            };
+
+            const setUIAceptada = () => {
+                if (buscando) buscando.style.display = 'none';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '✅ Terminar Ayuda';
+                    btn.style.background = '#ef4444';
+                }
             };
 
             const setUIBuscando = (solicitudId) => {
@@ -764,12 +796,12 @@
                             break;
                         case 'SOLICITUD_ACEPTADA':
                             sesionAceptada = true;
+                            // Guardar solicitudId en caso de que venga actualizado
+                            if (data.solicitudId) solicitudActivaId = data.solicitudId;
                             setEstado('✅ Solicitud aceptada. Voluntario en camino.');
                             showToast('✅ ¡Voluntario en camino! El mapa se actualiza en tiempo real.', 'success', 5000);
-                            if (buscando) buscando.style.display = 'none';
-                            if (btn) btn.disabled = true;
-                            if (btn) btn.textContent = 'Solicitud Aceptada';
                             renderVoluntario(data.voluntario, data.ubicacionVoluntario);
+                            setUIAceptada();
                             break;
                         case 'UBICACION_ACTUALIZADA':
                             // Actualizar marcador del voluntario en tiempo real
@@ -796,6 +828,21 @@
             };
 
             btn?.addEventListener('click', () => {
+                // Si la sesión está aceptada, el botón sirve para TERMINAR la ayuda
+                if (sesionAceptada) {
+                    if (!socket || socket.readyState !== WebSocket.OPEN) {
+                        setEstado('Sin conexión con el servidor.');
+                        return;
+                    }
+                    if (solicitudActivaId) {
+                        socket.send(JSON.stringify({ type: 'CANCELAR_SOLICITUD', solicitudId: solicitudActivaId }));
+                    }
+                    setEstado('Ayuda finalizada. Puedes solicitar ayuda nuevamente.');
+                    showToast('✅ Ayuda finalizada correctamente.', 'success', 4000);
+                    setUIIdle();
+                    return;
+                }
+
                 if (!socket || socket.readyState !== WebSocket.OPEN) {
                     setEstado('Conectando... intenta en unos segundos.');
                     return;

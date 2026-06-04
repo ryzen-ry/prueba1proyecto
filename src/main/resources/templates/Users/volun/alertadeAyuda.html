@@ -636,19 +636,23 @@
                 if (wrapper) wrapper.style.display = 'block';
 
                 if (!leafletMap) {
-                    leafletMap = L.map('mapaDiscapacitado', { zoomControl: true });
+                    leafletMap = L.map('mapaDiscapacitado', {
+                        zoomControl: true,
+                        attributionControl: true
+                    });
+                    // Tiles de OpenStreetMap
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                        maxZoom: 19
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19,
+                        subdomains: ['a', 'b', 'c']
                     }).addTo(leafletMap);
+                    // Vista inicial centrada en el discapacitado
+                    leafletMap.setView([latDis, lngDis], 15);
                 }
 
                 // Icono discapacitado (naranja)
                 const iconDis = L.divIcon({
-                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#f97316;border:3px solid white;
-                            display:flex;align-items:center;justify-content:center;
-                            box-shadow:0 3px 12px rgba(249,115,22,0.55);color:white;font-size:18px;
-                            animation:mlPulseOrange 2s infinite;">📍</div>`,
+                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#f97316;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(249,115,22,0.55);color:white;font-size:18px;">📍</div>`,
                     className: '',
                     iconSize: [38, 38],
                     iconAnchor: [19, 19]
@@ -656,9 +660,7 @@
 
                 // Icono yo voluntario (azul)
                 const iconMiVol = L.divIcon({
-                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;
-                            display:flex;align-items:center;justify-content:center;
-                            box-shadow:0 3px 12px rgba(59,130,246,0.55);color:white;font-size:18px;">🙋</div>`,
+                    html: `<div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(59,130,246,0.55);color:white;font-size:18px;">🙋</div>`,
                     className: '',
                     iconSize: [38, 38],
                     iconAnchor: [19, 19]
@@ -687,7 +689,11 @@
                     leafletMap.setView([latDis, lngDis], 15);
                 }
 
-                setTimeout(() => leafletMap && leafletMap.invalidateSize(), 300);
+                // invalidateSize en múltiples momentos
+                requestAnimationFrame(() => {
+                    if (leafletMap) leafletMap.invalidateSize();
+                    setTimeout(() => leafletMap && leafletMap.invalidateSize(), 400);
+                });
             };
 
             // Llamado cuando llega UBICACION_ACTUALIZADA del discapacitado
@@ -836,11 +842,19 @@
                     <div style="font-size:0.88rem;color:#4a5568;margin-bottom:4px;">
                         🏠 ${escapeHtml(d.direccion || '—')}
                     </div>
-                    <div style="font-size:0.85rem;color:#6b7280;">
+                    <div style="font-size:0.85rem;color:#6b7280;margin-bottom:10px;">
                         📍 Lat: ${escapeHtml(ub.lat)}, Lng: ${escapeHtml(ub.lng)}
                     </div>
+                    <button id="btnTerminarAyuda" style="width:100%;padding:12px;border:none;background:#ef4444;color:white;border-radius:999px;font-weight:800;font-size:1rem;cursor:pointer;transition:background .18s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                        ✅ Terminar Ayuda
+                    </button>
                 `;
                 infoDiv.style.display = 'block';
+
+                // Listener del botón de terminar
+                document.getElementById('btnTerminarAyuda')?.addEventListener('click', () => {
+                    terminarAyuda();
+                });
 
                 // Inicializar mapa
                 const myLat = lastPosition ? lastPosition.lat : null;
@@ -848,6 +862,28 @@
                 if (ub.lat != null && ub.lng != null) {
                     initMapVol(Number(ub.lat), Number(ub.lng), myLat, myLng);
                 }
+            };
+
+            const terminarAyuda = () => {
+                sesionAceptada = false;
+                // Ocultar mapa
+                const wrapper = document.getElementById('mapaDiscapacitadoWrapper');
+                if (wrapper) wrapper.style.display = 'none';
+                const infoDiv = document.getElementById('infoDiscapacitado');
+                if (infoDiv) infoDiv.style.display = 'none';
+                // Destruir mapa
+                if (leafletMap) {
+                    leafletMap.remove();
+                    leafletMap = null;
+                    disMarker = null;
+                    miMarkerVol = null;
+                    rutaLineVol = null;
+                }
+                const distEl = document.getElementById('mapDistanciaVol');
+                if (distEl) distEl.textContent = '';
+                // Mostrar estado limpio
+                setSinAlertas();
+                showToast('✅ Ayuda finalizada. En espera de nuevas solicitudes.', 'success', 5000);
             };
 
             const sendDecision = (solicitudId, decision, rejectBtn, acceptBtn) => {

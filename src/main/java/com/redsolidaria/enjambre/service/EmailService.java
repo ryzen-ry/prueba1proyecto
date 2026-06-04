@@ -21,14 +21,19 @@ public class EmailService {
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setFrom(emailFrom);
         mensaje.setTo(emailDestino);
-        mensaje.setSubject("🔐 Código de verificación - Red Solidaria UTP");
-        mensaje.setText("Hola,\n\nTu código de verificación es: " + codigo +
-                        "\n\nEste código expira en 10 minutos.\n\n" +
-                        "Si no solicitaste este código, ignora este mensaje.\n\n" +
+        mensaje.setSubject("Codigo de verificacion - Red Solidaria UTP");
+        mensaje.setText("Hola,\n\nTu codigo de verificacion es: " + codigo +
+                        "\n\nEste codigo expira en 10 minutos.\n\n" +
+                        "Si no solicitaste este codigo, ignora este mensaje.\n\n" +
                         "Saludos,\nEquipo Red Solidaria UTP");
 
-        mailSender.send(mensaje);
-        System.out.println("✓ Correo enviado a: " + emailDestino + " | Código: " + codigo);
+        try {
+            mailSender.send(mensaje);
+            System.out.println("✓ Correo enviado a: " + emailDestino + " | Código: " + codigo);
+        } catch (Exception e) {
+            System.err.println("❌ ERROR al enviar correo de verificación a " + emailDestino + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Async
@@ -36,12 +41,17 @@ public class EmailService {
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setFrom(emailFrom);
         mensaje.setTo(emailDestino);
-        mensaje.setSubject("🎉 Tu cuenta ha sido activada - Red Solidaria UTP");
-        mensaje.setText("Hola,\n\nTu cuenta ha sido activada con éxito. Ya puedes iniciar sesión en la plataforma.\n\n" +
+        mensaje.setSubject("Tu cuenta ha sido activada - Red Solidaria UTP");
+        mensaje.setText("Hola,\n\nTu cuenta ha sido activada con exito. Ya puedes iniciar sesion en la plataforma.\n\n" +
                         "Saludos,\nEquipo Red Solidaria UTP");
 
-        mailSender.send(mensaje);
-        System.out.println("✓ Correo de activación enviado a: " + emailDestino);
+        try {
+            mailSender.send(mensaje);
+            System.out.println("✓ Correo de activación enviado a: " + emailDestino);
+        } catch (Exception e) {
+            System.err.println("❌ ERROR al enviar correo de activación a " + emailDestino + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Async
